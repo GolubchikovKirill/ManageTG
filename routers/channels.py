@@ -23,7 +23,7 @@ class ChannelResponse(BaseModel):
     accepted_request_count: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 router = APIRouter()
