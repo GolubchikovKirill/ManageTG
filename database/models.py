@@ -32,8 +32,9 @@ class Proxy(Base):
     ip_address: Mapped[str] = mapped_column(index=True, unique=True)
     login: Mapped[str] = mapped_column(index=True, unique=True)
     password: Mapped[str] = mapped_column(index=True, unique=True)
+    port: Mapped[int] = mapped_column(default=1080)
 
-    # Убираем избыточную связь с аккаунтами
+    # избыточная связь с аккаунтами
     # accounts: Mapped[list["Accounts"]] = relationship("Accounts", backref="proxy")
 
 
