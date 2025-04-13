@@ -1,6 +1,7 @@
 import socket
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from database.models import Proxy
 from database.database import get_db
 
@@ -16,35 +17,38 @@ def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
 
 
 @router.post("/add")
-def add_proxy(ip_address: str, port: int, login: str, password: str, db: Session = Depends(get_db)):
+async def add_proxy(ip_address: str, port: int, login: str, password: str, db: AsyncSession = Depends(get_db)):
     if not is_proxy_available(ip_address, port):
         raise HTTPException(status_code=400, detail="Proxy is not available")
 
-    existing_proxy = db.query(Proxy).filter(Proxy.ip_address == ip_address).first()
+    result = await db.execute(select(Proxy).where(Proxy.ip_address == ip_address))
+    existing_proxy = result.scalar_one_or_none()
     if existing_proxy:
         raise HTTPException(status_code=400, detail="Proxy with this IP already exists")
 
     proxy = Proxy(ip_address=ip_address, port=port, login=login, password=password)
     db.add(proxy)
-    db.commit()
-    db.refresh(proxy)
+    await db.commit()
+    await db.refresh(proxy)
     return {"status": "success", "proxy_id": proxy.id}
 
 
 @router.delete("/delete")
-def delete_proxy(ip_address: str, db: Session = Depends(get_db)):
-    proxy = db.query(Proxy).filter(Proxy.ip_address == ip_address).first()
+async def delete_proxy(ip_address: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Proxy).where(Proxy.ip_address == ip_address))
+    proxy = result.scalar_one_or_none()
     if not proxy:
         raise HTTPException(status_code=404, detail="Proxy not found")
 
-    db.delete(proxy)
-    db.commit()
+    await db.delete(proxy)
+    await db.commit()
     return {"status": "deleted", "ip": ip_address}
 
 
 @router.get("/list")
-def list_proxies(db: Session = Depends(get_db)):
-    proxies = db.query(Proxy).all()
+async def list_proxies(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Proxy))
+    proxies = result.scalars().all()
     return [
         {
             "id": proxy.id,

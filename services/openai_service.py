@@ -1,29 +1,32 @@
-import openai
 import os
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
 
 load_dotenv()
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 class OpenAIService:
     def __init__(self):
-        self.model = "text-davinci-003"
+        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.model = "gpt-3.5-turbo"  # рекомендуется для генерации
 
-    def generate_name(self) -> str:
-        prompt = "Generate a random name for a Telegram user."
-        response = openai.Completion.create(
-            engine=self.model,
-            prompt=prompt,
-            max_tokens=10
+    async def generate_name(self) -> str:
+        prompt = "Придумай правдоподобное имя для пользователя Telegram."
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "system", "content": prompt}],
+            max_tokens=10,
+            temperature=0.8,
         )
-        return response.choices[0].text.strip()
+        return response.choices[0].message.content.strip()
 
-    def generate_comment(self) -> str:
-        prompt = "Generate a random comment that looks like something a real user would write in a Telegram group."
-        response = openai.Completion.create(
-            engine=self.model,
-            prompt=prompt,
-            max_tokens=50
+    async def generate_comment(self) -> str:
+        prompt = (
+            "Придумай реалистичный комментарий, который пользователь мог бы оставить в Telegram-группе."
         )
-        return response.choices[0].text.strip()
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "system", "content": prompt}],
+            max_tokens=50,
+            temperature=0.9,
+        )
+        return response.choices[0].message.content.strip()

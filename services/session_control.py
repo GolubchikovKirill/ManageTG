@@ -30,9 +30,15 @@ class SessionManager:
         else:
             raise FileNotFoundError(f"Session for {phone_number} not found.")
 
-    def delete_session(self, phone_number: str):
+    async def delete_session(self, phone_number: str):
         session_path = self._get_session_path(phone_number)
         if os.path.exists(session_path):
+            # Удаляем основной файл .session
             os.remove(session_path)
+            # Также удалим .session-journal и другие артефакты SQLite
+            for ext in [".session-journal", ".session-shm", ".session-wal"]:
+                journal_path = session_path + ext
+                if os.path.exists(journal_path):
+                    os.remove(journal_path)
         else:
             raise FileNotFoundError(f"Session for {phone_number} not found.")

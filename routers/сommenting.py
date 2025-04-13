@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from database.database import get_db
 from services.openai_service import OpenAIService
 from database.models import Actions
@@ -7,13 +8,21 @@ from services.start_commenting import BotActionExecutor
 
 router = APIRouter()
 
+
 @router.post("/execute-action")
-async def execute_bot_action(action_id: int, api_id: str, api_hash: str, db: Session = Depends(get_db)):
+async def execute_bot_action(
+    action_id: int,
+    api_id: str,
+    api_hash: str,
+    db: AsyncSession = Depends(get_db)
+):
     """
     Запуск действия для всех сессий (комментарий, реакция, просмотр).
     """
-    # Получаем действие из базы данных
-    action = db.query(Actions).filter(Actions.id == action_id).first()
+    # Получаем действие из базы данных (асинхронно)
+    result = await db.execute(select(Actions).where(Actions.id == action_id))
+    action = result.scalars().first()
+
     if not action:
         return {"error": "Action not found"}
 

@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from database.models import Channels
-from database.database import async_session
-from typing import List
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 from pydantic import BaseModel
-from typing import Optional
+
+from database.models import Channels
+from database.database import get_db
+
+router = APIRouter()
 
 # Схема для добавления канала
 class ChannelCreate(BaseModel):
@@ -13,7 +16,7 @@ class ChannelCreate(BaseModel):
     comment: str
     status: Optional[str] = "open"  # Канал может быть "open" или "private"
 
-# Схема для представления канала
+# Схема для ответа
 class ChannelResponse(BaseModel):
     id: int
     name: str
@@ -26,55 +29,47 @@ class ChannelResponse(BaseModel):
         from_attributes = True
 
 
-router = APIRouter()
-
-
-# Зависимость для получения сессии базы данных
-def get_db():
-    db = async_session()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 # Роут для добавления нового канала
 @router.post("/channels/", response_model=ChannelResponse)
-def create_channel(channel: ChannelCreate, db: Session = Depends(get_db)):
+async def create_channel(channel: ChannelCreate, db: AsyncSession = Depends(get_db)):
     try:
-        db_channel = Channels(
+        new_channel = Channels(
             name=channel.name,
             comment=channel.comment,
             status=channel.status
         )
-        db.add(db_channel)
-        db.commit()
-        db.refresh(db_channel)
-        return db_channel
+        db.add(new_channel)
+        await db.commit()
+        await db.refresh(new_channel)
+        return new_channel
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail="Database error: " + str(e))
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 # Роут для получения списка всех каналов
 @router.get("/channels/", response_model=List[ChannelResponse])
-def get_channels(db: Session = Depends(get_db)):
+async def get_channels(db: AsyncSession = Depends(get_db)):
     try:
-        channels = db.query(Channels).all()
-        return channels
+        result = await db.execute(select(Channels))
+        return result.scalars().all()
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail="Database error: " + str(e))
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 # Роут для удаления канала по ID
 @router.delete("/channels/{channel_id}", response_model=ChannelResponse)
-def delete_channel(channel_id: int, db: Session = Depends(get_db)):
+async def delete_channel(channel_id: int, db: AsyncSession = Depends(get_db)):
     try:
-        db_channel = db.query(Channels).filter(Channels.id == channel_id).first()
-        if db_channel is None:
+        result = await db.execute(select(Channels).where(Channels.id == channel_id))
+        channel = result.scalar_one_or_none()
+
+        if channel is None:
             raise HTTPException(status_code=404, detail="Channel not found")
 
-        db.delete(db_channel)
-        db.commit()
-        return db_channel
+        await db.delete(channel)
+        await db.commit()
+        return channel
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail="Database error: " + str(e))
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

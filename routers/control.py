@@ -33,7 +33,7 @@ async def create_session(request: SessionRequest):
 @router.get("/sessions/{phone_number}")
 async def get_session(phone_number: str, request: SessionRequest):
     try:
-        client = session_manager.get_session(phone_number, request.api_id, request.api_hash)
+        session_manager.get_session(phone_number, request.api_id, request.api_hash)
         return {"status": "session_loaded", "phone_number": phone_number}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Session for {phone_number} not found.")
@@ -55,7 +55,7 @@ async def generate_name():
     try:
         name = openai_service.generate_name()
         return {"name": name}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error generating name.")
 
 # Роут для генерации комментария
@@ -64,5 +64,5 @@ async def generate_comment():
     try:
         comment = openai_service.generate_comment()
         return {"comment": comment}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Error generating comment.")
