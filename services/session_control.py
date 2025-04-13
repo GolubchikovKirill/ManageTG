@@ -1,44 +1,28 @@
-import os
 from pyrogram import Client
+from pathlib import Path
 
 
 class SessionManager:
-    def __init__(self, base_path: str = "sessions"):
-        self.base_path = base_path
-
-    def _get_session_path(self, phone_number: str) -> str:
-        return os.path.join(self.base_path, f"{phone_number}.session")
-
-    def create_session(self, phone_number: str, api_id: int, api_hash: str) -> Client:
-        session_path = self._get_session_path(phone_number)
-        return Client(
-            name=session_path,
-            api_id=api_id,
-            api_hash=api_hash,
-            in_memory=False
-        )
+    def __init__(self, session_folder: str = "sessions"):
+        self.session_folder = Path(session_folder)
+        self.session_folder.mkdir(parents=True, exist_ok=True)
 
     def get_session(self, phone_number: str, api_id: int, api_hash: str) -> Client:
-        session_path = self._get_session_path(phone_number)
-        if os.path.exists(session_path):
-            return Client(
-                name=session_path,
+        """
+        Возвращает клиент сессии для указанного телефона.
+        Если сессия не существует, создаёт новую сессию.
+        """
+        session_file = self.session_folder / f"{phone_number}.session"
+
+        if session_file.exists():
+            # Если сессия уже существует, возвращаем клиент с этой сессией
+            return Client(str(session_file), api_id=api_id, api_hash=api_hash)
+        else:
+            # Если сессия не найдена, создаём новую сессию через авторизацию
+            client = Client(
+                f"{self.session_folder}/{phone_number}",
                 api_id=api_id,
                 api_hash=api_hash,
-                in_memory=False
+                phone_number=phone_number
             )
-        else:
-            raise FileNotFoundError(f"Session for {phone_number} not found.")
-
-    async def delete_session(self, phone_number: str):
-        session_path = self._get_session_path(phone_number)
-        if os.path.exists(session_path):
-            # Удаляем основной файл .session
-            os.remove(session_path)
-            # Также удалим .session-journal и другие артефакты SQLite
-            for ext in [".session-journal", ".session-shm", ".session-wal"]:
-                journal_path = session_path + ext
-                if os.path.exists(journal_path):
-                    os.remove(journal_path)
-        else:
-            raise FileNotFoundError(f"Session for {phone_number} not found.")
+            return client

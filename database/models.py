@@ -1,89 +1,94 @@
 from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime, timezone
+import enum
 
-Base = declarative_base()
+
+# Базовый класс
+class Base(DeclarativeBase):
+    pass
 
 
+# Enum-класс для статуса канала
+class ChannelStatus(str, enum.Enum):
+    open = "open"
+    private = "private"
+
+
+# Таблица аккаунтов
 class Accounts(Base):
-    __tablename__ = "Accounts"
+    __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    status: Mapped[bool] = mapped_column(Boolean)
-    name: Mapped[str] = mapped_column(index=True)
-    last_name: Mapped[str] = mapped_column(index=True)
-    phone_number: Mapped[str] = mapped_column(index=True)
+    status: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False, index=True)
+    last_name: Mapped[str] = mapped_column(nullable=False, index=True)
+    phone_number: Mapped[str] = mapped_column(nullable=False, index=True)
 
-    # Связь с прокси через внешний ключ
-    proxy_id: Mapped[int] = mapped_column(ForeignKey("Proxy.id"), index=True)
-
-    # Связь с прокси
+    proxy_id: Mapped[int] = mapped_column(ForeignKey("proxy.id"), nullable=False, index=True)
     proxy: Mapped["Proxy"] = relationship("Proxy", backref="accounts")
 
-    # Связь с каналами
-    channels: Mapped[list["Channels"]] = relationship("Channels", backref="account")
+    channels: Mapped[list["Channels"]] = relationship("Channels", back_populates="account")
 
 
+# Таблица прокси
 class Proxy(Base):
-    __tablename__ = "Proxy"
+    __tablename__ = "proxy"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    ip_address: Mapped[str] = mapped_column(index=True, unique=True)
-    login: Mapped[str] = mapped_column(index=True, unique=True)
-    password: Mapped[str] = mapped_column(index=True, unique=True)
-    port: Mapped[int] = mapped_column(default=1080)
-
-    # избыточная связь с аккаунтами
-    # accounts: Mapped[list["Accounts"]] = relationship("Accounts", backref="proxy")
+    ip_address: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
+    login: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
+    password: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
+    port: Mapped[int] = mapped_column(default=1080, nullable=False)
 
 
+# Таблица каналов
 class Channels(Base):
-    __tablename__ = "Channels"
+    __tablename__ = "channels"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(index=True, unique=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("Accounts.id"), index=True)
-    comment: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False, index=True)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Статус канала (открытый или закрытый)
-    status: Mapped[str] = mapped_column(Enum("open", "private", name="channel_status"), default="open")
+    status: Mapped[ChannelStatus] = mapped_column(
+        Enum(ChannelStatus, name="channel_status"),
+        default=ChannelStatus.open,
+        nullable=False
+    )
 
-    # Количество заявок на канал
-    request_count: Mapped[int] = mapped_column(default=0)  # Количество поданных заявок
-    accepted_request_count: Mapped[int] = mapped_column(default=0)  # Количество принятых заявок
+    request_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    accepted_request_count: Mapped[int] = mapped_column(default=0, nullable=False)
 
-    # Связь с аккаунтом
-    account: Mapped["Accounts"] = relationship("Accounts", backref="channels")
+    account: Mapped["Accounts"] = relationship("Accounts", back_populates="channels")
+    actions: Mapped[list["Actions"]] = relationship("Actions", back_populates="channel")
 
-    # Временные метки
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc),
-                                                 onupdate=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
 
 
+# Таблица действий
 class Actions(Base):
-    __tablename__ = "Actions"
+    __tablename__ = "actions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    channel_id: Mapped[int] = mapped_column(ForeignKey("Channels.id"), index=True)
+    channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
 
-    # Тип действия: "comment", "reaction", "view"
-    action_type: Mapped[str] = mapped_column(Text)
+    action_type: Mapped[str] = mapped_column(Text, nullable=False)
+    count: Mapped[int] = mapped_column(default=0, nullable=False)
+    action_time: Mapped[int] = mapped_column(default=60, nullable=False)
+    random_percentage: Mapped[int] = mapped_column(default=20, nullable=False)
 
-    # Количество действий (например, количество комментариев, реакций или просмотров)
-    count: Mapped[int] = mapped_column(default=0)
+    channel: Mapped["Channels"] = relationship("Channels", back_populates="actions")
 
-    # Время для выполнения действия в минутах (например, 60 минут)
-    action_time: Mapped[int] = mapped_column(default=60)
-
-    # Разброс времени в процентах (например, ±20%)
-    random_percentage: Mapped[int] = mapped_column(default=20)
-
-    # Связь с каналом
-    channel: Mapped["Channels"] = relationship("Channels", backref="actions")
-
-    # Временные метки
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc),
-                                                 onupdate=datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )

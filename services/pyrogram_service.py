@@ -1,59 +1,46 @@
-import os
-from pyrogram import Client
-from pyrogram.errors import SessionPasswordNeeded
-from dotenv import load_dotenv
-from database.models import Proxy
-
-load_dotenv()
-
-API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-
-
-def build_proxy_dict(proxy: Proxy) -> dict:
-    """
-    Преобразует объект Proxy из БД в формат, подходящий для pyrogram.
-    """
-    return {
-        "hostname": proxy.ip_address,
-        "port": proxy.port,
-        "username": proxy.login,
-        "password": proxy.password
-    }
-
+from pyrogram import Client, errors
+from services.session_control import SessionManager
 
 class TelegramAuth:
-    def __init__(self, phone_number: str, proxy: dict = None):
+    def __init__(self, phone_number: str, api_id: int, api_hash: str, session_manager: SessionManager):
         self.phone_number = phone_number
+        self.api_id = api_id
+        self.api_hash = api_hash
+        self.session_manager = session_manager
+        # Имя сессии теперь передается как часть имени файла
         self.client = Client(
-            name=f"sessions/{self.phone_number}",
-            api_id=API_ID,
-            api_hash=API_HASH,
-            in_memory=False,
-            proxy=proxy
+            f"session_{phone_number}",  # Имя сессии - это просто имя файла
+            api_id=self.api_id,
+            api_hash=self.api_hash,
+            phone_number=self.phone_number
         )
-        self.phone_code_hash = None
 
     async def send_code(self):
-        await self.client.connect()
-        sent_code = await self.client.send_code(self.phone_number)
-        self.phone_code_hash = sent_code.phone_code_hash
-        await self.client.disconnect()
-        return {"status": "code_sent", "phone_code_hash": self.phone_code_hash}
+        try:
+            # Запуск клиента и начало сессии
+            await self.client.start()  # Это автоматически инициирует вход, если сессия еще не создана
+            sent_code = await self.client.send_code(self.phone_number)
+            return {"status": "ok", "phone_code_hash": sent_code.phone_code_hash}
+        except errors.FloodWait as e:
+            return {"status": "error", "message": str(e)}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     async def sign_in(self, code: str, phone_code_hash: str, password: str = None):
-        await self.client.connect()
-
         try:
-            await self.client.sign_in(
-                phone_number=self.phone_number,
-                phone_code_hash=phone_code_hash,
-                phone_code=code
-            )
-        except SessionPasswordNeeded:
-            if password is None:
-                return {"status": "password_required"}
-            await self.client.check_password(password)
-
-        await self.client.disconnect()
-        return {"status": "authorized"}
+            # Проверка наличия пароля для двухфакторной аутентификации
+            if password:
+                # Передаем пароль, если он есть
+                await self.client.sign_in(self.phone_number, code, phone_code_hash, password)
+            else:
+                # Если пароля нет, только код и хеш
+                await self.client.sign_in(self.phone_number, code, phone_code_hash)
+            return {"status": "ok"}
+        except errors.PhoneCodeInvalid:
+            return {"status": "error", "message": "Invalid code"}
+        except errors.PhoneNumberFlood:
+            return {"status": "error", "message": "Too many requests. Try again later."}
+        except errors.PasswordHashInvalid:
+            return {"status": "error", "message": "Invalid 2FA password"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
