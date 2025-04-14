@@ -1,11 +1,10 @@
 from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.orm import DeclarativeBase
+from database.database import  Base
 from datetime import datetime, timezone
 import enum
 
-class Base(DeclarativeBase):
-    pass
+
 
 # Enum-класс для статуса канала
 class ChannelStatus(str, enum.Enum):

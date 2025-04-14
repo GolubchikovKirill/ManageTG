@@ -1,12 +1,10 @@
-import os
-from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from settings import settings
 
-load_dotenv()
 
 class OpenAIService:
     def __init__(self, model="gpt-3.5-turbo"):
-        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self.model = model
 
     async def generate_name(self) -> str:

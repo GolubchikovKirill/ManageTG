@@ -1,14 +1,14 @@
-import os
 import asyncio
-from dotenv import load_dotenv
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from settings import settings
 
-load_dotenv()
-
-DB_URL = os.getenv("DB_URL")
+DB_URL = settings.DB_URL
 
 engine = create_async_engine(DB_URL, echo=True)
+
+class Base(DeclarativeBase):
+    pass
 
 async_session = async_sessionmaker(
     bind=engine,
@@ -16,18 +16,20 @@ async_session = async_sessionmaker(
     class_=AsyncSession
 )
 
-Base = declarative_base()
+
 
 # Используем как Depends(get_db)
 async def get_db() -> AsyncSession:
     async with async_session() as session:
         yield session
 
+
 # Используем для создания таблиц
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("Таблицы успешно созданы.")
+
 
 # CLI-запуск
 if __name__ == "__main__":
