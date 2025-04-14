@@ -1,5 +1,6 @@
 import socket
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.models import Proxy
@@ -11,6 +12,13 @@ router = APIRouter(
 )
 
 
+class AddProxyRequest(BaseModel):
+    ip_address: str
+    login: str
+    password: str
+    port: int
+
+
 def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
     try:
         with socket.create_connection((ip, port), timeout=timeout):
@@ -18,22 +26,33 @@ def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
 
-
 @router.post("/add")
-async def add_proxy(ip_address: str, port: int, login: str, password: str, db: AsyncSession = Depends(get_db)):
-    if not is_proxy_available(ip_address, port):
-        raise HTTPException(status_code=400, detail="Proxy is not available")
+async def add_proxy(data: AddProxyRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        # Проверяем, существует ли уже прокси с таким логином
+        existing_proxy = await db.execute(select(Proxy).where(Proxy.ip_address == data.ip_address))
+        existing_proxy = existing_proxy.scalars().first()
 
-    result = await db.execute(select(Proxy).where(Proxy.ip_address == ip_address))
-    existing_proxy = result.scalar_one_or_none()
-    if existing_proxy:
-        raise HTTPException(status_code=400, detail="Proxy with this IP already exists")
+        if existing_proxy:
+            # Если прокси существует, обновляем его данные
+            existing_proxy.ip_address = data.ip_address
+            existing_proxy.password = data.password
+            existing_proxy.port = data.port
+        else:
+            # Если прокси не существует, создаем новую запись
+            new_proxy = Proxy(
+                ip_address=data.ip_address,
+                login=data.login,
+                password=data.password,
+                port=data.port
+            )
+            db.add(new_proxy)
 
-    proxy = Proxy(ip_address=ip_address, port=port, login=login, password=password)
-    db.add(proxy)
-    await db.commit()
-    await db.refresh(proxy)
-    return {"status": "success", "proxy_id": proxy.id}
+        await db.commit()
+        return {"message": "Proxy added or updated successfully"}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error adding proxy: {str(e)}")
 
 
 @router.delete("/delete")

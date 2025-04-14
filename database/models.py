@@ -32,6 +32,7 @@ class Proxy(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     ip_address: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
+    type: Mapped[str] = mapped_column(default="socks5")
     login: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     password: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     port: Mapped[int] = mapped_column(default=1080, nullable=False)
