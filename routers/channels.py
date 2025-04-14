@@ -4,11 +4,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
+import pytz
 
 from database.models import Channels
 from database.database import get_db
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/channels",
+    tags=["channels"],
+)
 
 # Схема для добавления канала
 class ChannelCreate(BaseModel):
@@ -33,10 +38,15 @@ class ChannelResponse(BaseModel):
 @router.post("/channels/", response_model=ChannelResponse)
 async def create_channel(channel: ChannelCreate, db: AsyncSession = Depends(get_db)):
     try:
+        created_at = datetime.now(pytz.utc).replace(tzinfo=None)
+        updated_at = datetime.now(pytz.utc).replace(tzinfo=None)
+
         new_channel = Channels(
             name=channel.name,
             comment=channel.comment,
-            status=channel.status
+            status=channel.status,
+            created_at=created_at,
+            updated_at=updated_at
         )
         db.add(new_channel)
         await db.commit()

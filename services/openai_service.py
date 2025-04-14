@@ -5,9 +5,9 @@ from openai import AsyncOpenAI
 load_dotenv()
 
 class OpenAIService:
-    def __init__(self):
+    def __init__(self, model="gpt-3.5-turbo"):
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = "gpt-3.5-turbo"
+        self.model = model
 
     async def generate_name(self) -> str:
         prompt = "Придумай правдоподобное имя для пользователя Telegram."
@@ -18,16 +18,14 @@ class OpenAIService:
                 max_tokens=10,
                 temperature=0.8,
             )
-            print(response)  # Логирование ответа от OpenAI
             return response.choices[0].message.content.strip()
         except Exception as e:
             print(f"Error in generate_name: {e}")
-            raise
+            return "Ошибка генерации имени"
 
-    async def generate_comment(self) -> str:
-        prompt = (
-            "Придумай реалистичный не большой комментарий, который пользователь мог бы оставить в Telegram-группе."
-        )
+    async def generate_comment(self, prompt: str = None) -> str:
+        if prompt is None:
+            prompt = "Придумай реалистичный не большой комментарий, который пользователь мог бы оставить в Telegram-группе."
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -35,8 +33,7 @@ class OpenAIService:
                 max_tokens=50,
                 temperature=0.9,
             )
-            print(response)  # Логирование ответа от OpenAI
             return response.choices[0].message.content.strip()
         except Exception as e:
             print(f"Error in generate_comment: {e}")
-            raise
+            return "Ошибка генерации комментария"

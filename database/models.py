@@ -4,17 +4,13 @@ from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime, timezone
 import enum
 
-
-# Базовый класс
 class Base(DeclarativeBase):
     pass
-
 
 # Enum-класс для статуса канала
 class ChannelStatus(str, enum.Enum):
     open = "open"
     private = "private"
-
 
 # Таблица аккаунтов
 class Accounts(Base):
@@ -25,12 +21,11 @@ class Accounts(Base):
     name: Mapped[str] = mapped_column(nullable=False, index=True)
     last_name: Mapped[str] = mapped_column(nullable=False, index=True)
     phone_number: Mapped[str] = mapped_column(nullable=False, index=True)
+    api_id: Mapped[int] = mapped_column(nullable=False)
+    api_hash: Mapped[str] = mapped_column(nullable=False)
 
-    proxy_id: Mapped[int] = mapped_column(ForeignKey("proxy.id"), nullable=False, index=True)
+    proxy_id: Mapped[int] = mapped_column(ForeignKey("proxy.id"), nullable=True, index=True)
     proxy: Mapped["Proxy"] = relationship("Proxy", backref="accounts")
-
-    channels: Mapped[list["Channels"]] = relationship("Channels", back_populates="account")
-
 
 # Таблица прокси
 class Proxy(Base):
@@ -42,14 +37,12 @@ class Proxy(Base):
     password: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     port: Mapped[int] = mapped_column(default=1080, nullable=False)
 
-
 # Таблица каналов
 class Channels(Base):
     __tablename__ = "channels"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False, index=True)
     comment: Mapped[str] = mapped_column(Text, nullable=False)
 
     status: Mapped[ChannelStatus] = mapped_column(
@@ -61,16 +54,17 @@ class Channels(Base):
     request_count: Mapped[int] = mapped_column(default=0, nullable=False)
     accepted_request_count: Mapped[int] = mapped_column(default=0, nullable=False)
 
-    account: Mapped["Accounts"] = relationship("Accounts", back_populates="channels")
     actions: Mapped[list["Actions"]] = relationship("Actions", back_populates="channel")
 
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         nullable=False
     )
-
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False
+    )
 
 # Таблица действий
 class Actions(Base):
@@ -86,9 +80,12 @@ class Actions(Base):
 
     channel: Mapped["Channels"] = relationship("Channels", back_populates="actions")
 
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         nullable=False
     )

@@ -4,11 +4,14 @@ from sqlalchemy import select
 from database.database import get_db
 from services.openai_service import OpenAIService
 from database.models import Actions
-from services.start_commenting import BotActionExecutor
+from services.commenting_logic import BotActionExecutor
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/commenting",
+    tags=["Commenting"],
+)
 
-
+# Роут для выполнения действия бота
 @router.post("/execute-action")
 async def execute_bot_action(
     action_id: int,

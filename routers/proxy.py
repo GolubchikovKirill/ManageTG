@@ -5,7 +5,10 @@ from sqlalchemy import select
 from database.models import Proxy
 from database.database import get_db
 
-router = APIRouter(prefix="/proxy", tags=["Proxy"])
+router = APIRouter(
+    prefix="/proxy",
+    tags=["Proxy"]
+)
 
 
 def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
