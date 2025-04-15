@@ -81,11 +81,9 @@ async def send_code(data: SendCodeRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/sign-in")
 async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
     try:
-        # Получаем прокси
         proxy = await db.get(Proxy, data.proxy_id)
         proxy_config = prepare_proxy_config(proxy)
 
-        # Инициализация клиента
         tg = TelegramAuth(
             phone_number=data.phone_number,
             api_id=data.api_id,
@@ -93,7 +91,6 @@ async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
             proxy=proxy_config
         )
 
-        # Авторизация
         result = await tg.sign_in(
             code=data.code,
             phone_code_hash=data.phone_code_hash,
@@ -106,10 +103,8 @@ async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
                 return {"status": "2fa_required", "message": error_msg}
             raise HTTPException(status_code=400, detail=error_msg)
 
-        # Сохранение аккаунта в БД после успешной авторизации
         account = await db.scalar(
-            select(Accounts)
-            .where(Accounts.phone_number == data.phone_number)
+            select(Accounts).where(Accounts.phone_number == data.phone_number)
         )
 
         if not account:
@@ -128,17 +123,19 @@ async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
             account.is_authorized = True
 
         await db.commit()
-
         return {"status": "ok", "message": "Successfully signed in"}
 
     except errors.SessionPasswordNeeded:
         return {"status": "2fa_required", "message": "2FA password required"}
-    except (errors.PhoneCodeInvalid, errors.PhoneCodeExpired):
-        raise HTTPException(400, "Invalid or expired code")
+    except errors.PhoneCodeInvalid:
+        raise HTTPException(400, "Invalid code")
+    except errors.PhoneCodeExpired:
+        raise HTTPException(400, "Code expired")
     except errors.PasswordHashInvalid:
         raise HTTPException(400, "Invalid 2FA password")
     except errors.PhoneNumberFlood:
-        raise HTTPException(429, "Too many attempts")
+        raise HTTPException(429, "Too many attempts, try later")
+
     except Exception as e:
         await db.rollback()
         raise HTTPException(500, f"Authentication error: {str(e)}")

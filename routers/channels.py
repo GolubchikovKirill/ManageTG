@@ -35,7 +35,7 @@ class ChannelResponse(BaseModel):
 
 
 # Роут для добавления нового канала
-@router.post("/channels/", response_model=ChannelResponse)
+@router.post("/create", response_model=ChannelResponse)
 async def create_channel(channel: ChannelCreate, db: AsyncSession = Depends(get_db)):
     try:
         created_at = datetime.now(pytz.utc).replace(tzinfo=None)
@@ -58,7 +58,7 @@ async def create_channel(channel: ChannelCreate, db: AsyncSession = Depends(get_
 
 
 # Роут для получения списка всех каналов
-@router.get("/channels/", response_model=List[ChannelResponse])
+@router.get("/get", response_model=List[ChannelResponse])
 async def get_channels(db: AsyncSession = Depends(get_db)):
     try:
         result = await db.execute(select(Channels))
@@ -68,7 +68,7 @@ async def get_channels(db: AsyncSession = Depends(get_db)):
 
 
 # Роут для удаления канала по ID
-@router.delete("/channels/{channel_id}", response_model=ChannelResponse)
+@router.delete("/delete/{channel_id}", response_model=ChannelResponse)
 async def delete_channel(channel_id: int, db: AsyncSession = Depends(get_db)):
     try:
         result = await db.execute(select(Channels).where(Channels.id == channel_id))

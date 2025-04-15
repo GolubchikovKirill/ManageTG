@@ -1,9 +1,8 @@
 from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from database.database import  Base
+from database.database import Base
 from datetime import datetime, timezone
 import enum
-
 
 
 # Enum-класс для статуса канала
@@ -11,11 +10,12 @@ class ChannelStatus(str, enum.Enum):
     open = "open"
     private = "private"
 
+
 # Таблица аккаунтов
 class Accounts(Base):
     __tablename__ = "accounts"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     status: Mapped[bool] = mapped_column(Boolean, nullable=False)
     name: Mapped[str] = mapped_column(nullable=False, index=True)
     last_name: Mapped[str] = mapped_column(nullable=False, index=True)
@@ -26,22 +26,24 @@ class Accounts(Base):
     proxy_id: Mapped[int] = mapped_column(ForeignKey("proxy.id"), nullable=True, index=True)
     proxy: Mapped["Proxy"] = relationship("Proxy", backref="accounts")
 
+
 # Таблица прокси
 class Proxy(Base):
     __tablename__ = "proxy"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     ip_address: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     type: Mapped[str] = mapped_column(default="socks5")
     login: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     password: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     port: Mapped[int] = mapped_column(default=1080, nullable=False)
 
+
 # Таблица каналов
 class Channels(Base):
     __tablename__ = "channels"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     comment: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -66,11 +68,12 @@ class Channels(Base):
         nullable=False
     )
 
+
 # Таблица действий
 class Actions(Base):
     __tablename__ = "actions"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
 
     action_type: Mapped[str] = mapped_column(Text, nullable=False)
