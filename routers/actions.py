@@ -29,7 +29,6 @@ class ActionResponse(BaseModel):
         from_attributes = True
 
 
-# Роут для добавления нового действия
 @router.post("/", response_model=ActionResponse)
 async def create_action(action: ActionCreate, db: AsyncSession = Depends(get_db)):
     try:
@@ -49,7 +48,6 @@ async def create_action(action: ActionCreate, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=500, detail=f"Error creating action: {str(e)}")
 
 
-# Роут для получения списка всех действий
 @router.get("/", response_model=list[ActionResponse])
 async def get_actions(db: AsyncSession = Depends(get_db)):
     try:
@@ -59,7 +57,6 @@ async def get_actions(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error getting actions: {str(e)}")
 
 
-# Роут для удаления действия по ID
 @router.delete("/{action_id}", response_model=ActionResponse)
 async def delete_action(action_id: int, db: AsyncSession = Depends(get_db)):
     try:
@@ -76,7 +73,7 @@ async def delete_action(action_id: int, db: AsyncSession = Depends(get_db)):
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error deleting action: {str(e)}")
 
-# Роут для обновления действия
+
 @router.put("/{action_id}", response_model=ActionResponse)
 async def update_action(action_id: int, action: ActionCreate, db: AsyncSession = Depends(get_db)):
     try:

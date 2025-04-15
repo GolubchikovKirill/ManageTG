@@ -1,9 +1,9 @@
+import asyncio
 import os
 import random
-import asyncio
 from pyrogram import Client, errors
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import Actions, Channels
 from services.openai_service import OpenAIService
 
@@ -22,10 +22,17 @@ class BotActionExecutor:
             int((time_frame + spread) * 60)
         )
 
+    async def get_channel(self, channel_id: int) -> Channels | None:
+        result = await self.session.execute(
+            select(Channels).where(Channels.id == channel_id)
+        )
+        return result.scalars().first()
+
     async def execute_action(self, action: Actions, bot_client: Client):
         try:
             delay_minutes = self.random_time_with_spread(action.action_time, action.random_percentage)
-            await asyncio.sleep(delay_minutes)
+            print(f"Waiting for {delay_minutes} minutes before performing action.")
+            await asyncio.sleep(delay_minutes * 60)
 
             if action.action_type == "comment":
                 await self.execute_comment(action.channel_id, action.count, bot_client)
@@ -35,63 +42,118 @@ class BotActionExecutor:
                 await self.execute_view(action.channel_id, action.count, bot_client)
         except errors.FloodWait as e:
             print(f"FloodWait error: {e}")
+            await asyncio.sleep(e.value * 60)
         except Exception as e:
             print(f"Error executing action: {e}")
 
-    async def get_channel(self, channel_id: int) -> Channels | None:
-        result = await self.session.execute(
-            select(Channels).where(Channels.id == channel_id)
-        )
-        return result.scalars().first()
-
     async def execute_comment(self, channel_id: int, count: int, bot_client: Client):
+        global target
         channel = await self.get_channel(channel_id)
         if not channel:
             print(f"Channel {channel_id} not found.")
             return
 
         try:
-            # Подписываемся на канал
-            print(f"Trying to join channel {channel.name}...")
-            await bot_client.join_chat(channel.name)
-            print(f"Successfully joined channel: {channel.name}")
+            chat = await bot_client.get_chat(channel.name)
+            print(f"📢 Channel: {chat.title} (ID: {chat.id})")
 
-            # Получаем последний пост в канале
-            async for message in bot_client.get_chat_history(channel.name, limit=1):
-                print(f"Last message found: {message.message_id}")
+            if not chat.linked_chat:
+                print("❌ Channel has no linked discussion group")
+                return
 
-                # Проверяем, что это канал
-                if message.chat.type in ['supergroup', 'channel']:
-                    for _ in range(count):
-                        comment = await self.openai_service.generate_comment(channel.comment)
-                        print(f"Generated comment: {comment}")
+            discussion_group = await bot_client.get_chat(chat.linked_chat.id)
+            print(f"💬 Discussion group: {discussion_group.title} (ID: {discussion_group.id})")
 
-                        # Отправляем комментарий под этим постом
-                        await bot_client.send_message(
-                            chat_id=message.chat.id,
-                            text=comment,
-                            reply_to_message_id=message.message_id  # Комментируем под последним постом
-                        )
-                    print(f"Comment(s) sent under the post with message_id: {message.message_id}")
-                    break  # Завершаем после первого поста
+            # Join group if not member
+            try:
+                await bot_client.get_chat_member(discussion_group.id, "me")
+            except errors.UserNotParticipant:
+                print("🤖 Joining discussion group...")
+                try:
+                    await bot_client.join_chat(discussion_group.username or discussion_group.id)
+                    print("✅ Joined successfully")
+                    await asyncio.sleep(5)  # Increased delay
+                except Exception as e:
+                    print(f"❌ Join error: {e}")
+                    return
 
-        except errors.FloodWait as e:
-            print(f"FloodWait error: {e}")
+            # Check permissions
+            try:
+                member = await bot_client.get_chat_member(discussion_group.id, "me")
+                print(f"🔑 Member status: {member.status}")
+
+                if member.status == "administrator":
+                    if not member.privileges or not member.privileges.can_post_messages:
+                        print("❌ Admin lacks posting privileges")
+                        return
+                    print("👑 Admin with posting rights confirmed")
+                else:
+                    if not discussion_group.permissions or not discussion_group.permissions.can_send_messages:
+                        print("❌ Group permissions restrict messaging")
+                        return
+                    print("👤 Regular member with messaging rights confirmed")
+
+            except Exception as e:
+                print(f"❌ Permission check failed: {e}")
+                return
+
+            # Get recent posts
+            messages = []
+            async for message in bot_client.get_chat_history(chat.id, limit=25):
+                if message.service or not message.text:
+                    continue
+                messages.append(message)
+                if len(messages) >= 15:
+                    break
+
+            if not messages:
+                print("➖ No posts available for commenting")
+                return
+
+            # Send comments
+            success_count = 0
+            for attempt in range(min(count, 20)):
+                try:
+                    if not messages:
+                        print("➖ No posts remaining")
+                        break
+
+                    target = random.choice(messages)
+                    print(f"🎯 Selected post ID {target.id}")
+
+                    comment_text = await self.openai_service.generate_comment()
+                    if not comment_text:
+                        print("⚠️ Failed to generate comment")
+                        continue
+
+                    await bot_client.send_message(
+                        chat_id=discussion_group.id,
+                        text=comment_text,
+                        reply_to_message_id=target.id
+                    )
+                    success_count += 1
+                    print(f"✅ Comment #{attempt + 1} sent")
+
+                    delay = random.randint(20, 60)
+                    print(f"⏳ Next comment in {delay}s")
+                    await asyncio.sleep(delay)
+
+                except errors.ReplyMessageMissing:
+                    print(f"⚠️ Post {target.id} deleted")
+                    messages.remove(target)
+                except errors.FloodWait as e:
+                    print(f"⏳ FloodWait: Waiting {e.value}s")
+                    await asyncio.sleep(e.value)
+                except Exception as e:
+                    print(f"⚠️ Sending error: {type(e).__name__} - {e}")
+                    await asyncio.sleep(10)
+
+            print(f"📊 Total comments sent: {success_count}/{count}")
+
+        except errors.ChatAdminRequired as e:
+            print(f"🚫 Admin required: {e}")
         except Exception as e:
-            print(f"Error sending comment: {e}")
-
-    async def execute_reaction(self, channel_id: int, count: int, bot_client: Client):
-        channel = await self.get_channel(channel_id)
-        if not channel:
-            print(f"Channel {channel_id} not found.")
-            return
-
-        try:
-            reactions = ["❤️", "👍", "👎", "🎭"]
-            for _ in range(count):
-                await bot_client.send_reaction(channel.name, random.choice(reactions))
-        except Exception as e:
-            print(f"Error sending reaction: {e}")
+            print(f"🔥 Critical error: {type(e).__name__} - {e}")
 
     async def execute_view(self, channel_id: int, count: int, bot_client: Client):
         channel = await self.get_channel(channel_id)
@@ -100,20 +162,33 @@ class BotActionExecutor:
             return
 
         try:
-            for _ in range(count):
-                await bot_client.send_message(channel.name, "Просмотрено!")  # имитация
+            counter = 0
+            async for message in bot_client.get_chat_history(
+                    channel.name,
+                    limit=min(count, 100)
+            ):
+                if message.photo or message.video:
+                    try:
+                        await bot_client.download_media(message, file_name=os.devnull)
+                        counter += 1
+                    except Exception as e:
+                        print(f"⚠️ Media error: {e}")
+                await asyncio.sleep(random.uniform(0.5, 2.5))
+                if counter >= count:
+                    break
+            print(f"👀 Processed {counter} views")
         except Exception as e:
-            print(f"Error sending view: {e}")
+            print(f"View error: {e}")
 
     def load_sessions(self):
         if not os.path.exists(self.session_folder):
-            print(f"Session folder '{self.session_folder}' not found.")
+            os.makedirs(self.session_folder, exist_ok=True)
             return []
 
         return [
-            filename[:-8]
-            for filename in os.listdir(self.session_folder)
-            if filename.endswith(".session")
+            f.split(".")[0]
+            for f in os.listdir(self.session_folder)
+            if f.endswith(".session")
         ]
 
     async def run(self, action: Actions, api_id: str, api_hash: str):
@@ -121,18 +196,21 @@ class BotActionExecutor:
         tasks = []
 
         for session_name in sessions:
-            session_path = os.path.join(self.session_folder, session_name)
+            session_path = os.path.join(self.session_folder, f"{session_name}.session")
 
-            # Убедимся, что сессии создаются в указанной папке
-            if not os.path.exists(self.session_folder):
-                os.makedirs(self.session_folder)
+            async def task_wrapper(path=session_path):
+                try:
+                    async with Client(
+                            name=session_name,
+                            api_id=api_id,
+                            api_hash=api_hash,
+                            workdir=self.session_folder
+                    ) as client:
+                        await self.execute_action(action, client)
+                except Exception as e:
+                    print(f"Session {path} error: {e}")
 
-            async def run_for_client(path=session_path):
-                async with Client(path, api_id=api_id, api_hash=api_hash) as bot_client:
-                    await self.execute_action(action, bot_client)
+            tasks.append(asyncio.create_task(task_wrapper()))
 
-            tasks.append(asyncio.create_task(run_for_client()))
-
-        await asyncio.gather(*tasks)
-
-        return {"message": "Actions executed successfully"}
+        await asyncio.gather(*tasks, return_exceptions=True)
+        return {"status": "completed", "sessions_processed": len(sessions)}
