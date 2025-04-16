@@ -47,7 +47,6 @@ class BotActionExecutor:
             print(f"Error executing action: {e}")
 
     async def execute_comment(self, channel_id: int, count: int, bot_client: Client):
-        global target
         channel = await self.get_channel(channel_id)
         if not channel:
             print(f"Channel {channel_id} not found.")
@@ -72,7 +71,7 @@ class BotActionExecutor:
                 try:
                     await bot_client.join_chat(discussion_group.username or discussion_group.id)
                     print("✅ Joined successfully")
-                    await asyncio.sleep(5)  # Increased delay
+                    await asyncio.sleep(5)
                 except Exception as e:
                     print(f"❌ Join error: {e}")
                     return
@@ -97,58 +96,57 @@ class BotActionExecutor:
                 print(f"❌ Permission check failed: {e}")
                 return
 
-            # Get recent posts
-            messages = []
-            async for message in bot_client.get_chat_history(chat.id, limit=25):
-                if message.service or not message.text:
-                    continue
-                messages.append(message)
-                if len(messages) >= 15:
-                    break
-
-            if not messages:
-                print("➖ No posts available for commenting")
-                return
-
-            # Send comments
-            success_count = 0
-            for attempt in range(min(count, 20)):
-                try:
-                    if not messages:
-                        print("➖ No posts remaining")
+            # Get 3 last posts
+            last_posts = []
+            async for message in bot_client.get_chat_history(chat.id, limit=10):
+                if not message.service and (message.text or message.caption):
+                    last_posts.append(message)
+                    if len(last_posts) >= 3:  # Собираем 3 последних поста
                         break
 
-                    target = random.choice(messages)
-                    print(f"🎯 Selected post ID {target.id}")
+            if not last_posts:
+                print("➖ No suitable posts found")
+                return
 
-                    comment_text = await self.openai_service.generate_comment()
-                    if not comment_text:
-                        print("⚠️ Failed to generate comment")
-                        continue
+            print(f"📌 Found {len(last_posts)} recent posts:")
+            for i, post in enumerate(last_posts, 1):
+                print(f"#{i} ID: {post.id} | Date: {post.date} | Link: https://t.me/c/{chat.id}/{post.id}")
 
-                    await bot_client.send_message(
-                        chat_id=discussion_group.id,
-                        text=comment_text,
-                        reply_to_message_id=target.id
-                    )
-                    success_count += 1
-                    print(f"✅ Comment #{attempt + 1} sent")
+            # Calculate comments per post
+            comments_per_post = max(1, count // len(last_posts))
+            print(f"\n📝 Will send {comments_per_post} comments per post")
 
-                    delay = random.randint(20, 60)
-                    print(f"⏳ Next comment in {delay}s")
-                    await asyncio.sleep(delay)
+            # Process each post
+            total_sent = 0
+            for post in last_posts:
+                try:
+                    print(f"\n🎯 Processing post ID {post.id}")
+
+                    for comment_num in range(comments_per_post):
+                        comment_text = await self.openai_service.generate_comment()
+                        if not comment_text:
+                            print("⚠️ Failed to generate comment")
+                            continue
+
+                        await bot_client.send_message(
+                            chat_id=discussion_group.id,
+                            text=comment_text,
+                            reply_to_message_id=post.id
+                        )
+                        total_sent += 1
+                        print(f"✅ Comment #{comment_num + 1} sent")
+
+                        delay = random.randint(15, 30)
+                        print(f"⏳ Next action in {delay}s")
+                        await asyncio.sleep(delay)
 
                 except errors.ReplyMessageMissing:
-                    print(f"⚠️ Post {target.id} deleted")
-                    messages.remove(target)
-                except errors.FloodWait as e:
-                    print(f"⏳ FloodWait: Waiting {e.value}s")
-                    await asyncio.sleep(e.value)
+                    print("⚠️ Post has been deleted, skipping")
                 except Exception as e:
-                    print(f"⚠️ Sending error: {type(e).__name__} - {e}")
+                    print(f"⚠️ Error: {type(e).__name__} - {e}")
                     await asyncio.sleep(10)
 
-            print(f"📊 Total comments sent: {success_count}/{count}")
+            print(f"\n📊 Total comments sent: {total_sent}/{count}")
 
         except errors.ChatAdminRequired as e:
             print(f"🚫 Admin required: {e}")
