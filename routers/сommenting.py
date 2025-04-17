@@ -22,7 +22,7 @@ async def execute_bot_action(
     """
     Запуск действия для всех сессий (комментарий, реакция, просмотр).
     """
-    # Получаем действие из базы данных (асинхронно)
+    # Получаем действие из базы данных
     result = await db.execute(select(Actions).where(Actions.id == action_id))
     action = result.scalars().first()
 

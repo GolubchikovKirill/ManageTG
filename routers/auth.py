@@ -91,6 +91,10 @@ async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
             proxy=proxy_config
         )
 
+        # Проверяем, что все данные переданы и корректны
+        if not data.code or not data.phone_code_hash:
+            raise HTTPException(status_code=400, detail="Missing code or phone_code_hash")
+
         result = await tg.sign_in(
             code=data.code,
             phone_code_hash=data.phone_code_hash,
@@ -135,7 +139,6 @@ async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "Invalid 2FA password")
     except errors.PhoneNumberFlood:
         raise HTTPException(429, "Too many attempts, try later")
-
     except Exception as e:
         await db.rollback()
         raise HTTPException(500, f"Authentication error: {str(e)}")

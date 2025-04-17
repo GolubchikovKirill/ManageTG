@@ -46,13 +46,11 @@ class Channels(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     comment: Mapped[str] = mapped_column(Text, nullable=False)
-
     status: Mapped[ChannelStatus] = mapped_column(
         Enum(ChannelStatus, name="channel_status"),
         default=ChannelStatus.open,
         nullable=False
     )
-
     request_count: Mapped[int] = mapped_column(default=0, nullable=False)
     accepted_request_count: Mapped[int] = mapped_column(default=0, nullable=False)
 
