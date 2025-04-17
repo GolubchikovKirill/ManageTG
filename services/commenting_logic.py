@@ -1,6 +1,8 @@
 import asyncio
 import os
 import random
+from datetime import timedelta, datetime
+
 from pyrogram import Client, errors
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +43,15 @@ class BotActionExecutor:
         except Exception as e:
             print(f"[Executor] Ошибка выполнения действия: {type(e).__name__}: {e}")
 
+    @staticmethod
+    async def _join_channel_if_needed(bot_client: Client, channel_username_or_id: str):
+        try:
+            await bot_client.get_chat_member(channel_username_or_id, "me")
+        except errors.UserNotParticipant:
+            print(f"[Join] Бот не подписан на {channel_username_or_id}. Присоединяемся...")
+            await bot_client.join_chat(channel_username_or_id)
+            await asyncio.sleep(3)
+
     async def execute_comment(self, channel_id: int, count: int, bot_client: Client):
         channel = await self.get_channel(channel_id)
         if not channel:
@@ -48,28 +59,27 @@ class BotActionExecutor:
             return
 
         try:
+            await self._join_channel_if_needed(bot_client, channel.name)
+
             chat = await bot_client.get_chat(channel.name)
             if not chat.linked_chat:
-                print("[Comment] У канала нет обсуждений.")
+                print("[Comment] У канала нет чата обсуждений.")
                 return
 
             discussion = await bot_client.get_chat(chat.linked_chat.id)
 
-            # Проверка участия в чате
             try:
                 await bot_client.get_chat_member(discussion.id, "me")
             except errors.UserNotParticipant:
-                print("[Comment] Бот не состоит в обсуждении. Присоединяемся...")
+                print("[Comment] Бот не состоит в чате обсуждений. Присоединяемся...")
                 await bot_client.join_chat(discussion.username or discussion.id)
                 await asyncio.sleep(3)
 
-            # Проверка прав
             member = await bot_client.get_chat_member(discussion.id, "me")
             if member.status != "administrator" and (not discussion.permissions or not discussion.permissions.can_send_messages):
                 print("[Comment] Нет прав на отправку сообщений.")
                 return
 
-            # Получаем последние 3 поста
             posts = []
             async for msg in bot_client.get_chat_history(chat.id, limit=10):
                 if not msg.service and (msg.text or msg.caption):
@@ -106,23 +116,121 @@ class BotActionExecutor:
             print(f"[View] Канал с ID {channel_id} не найден.")
             return
 
+        await self._join_channel_if_needed(bot_client, channel.name)
+
         viewed = 0
         try:
-            async for msg in bot_client.get_chat_history(channel.name, limit=100):
-                if msg.photo or msg.video:
+            async for msg in bot_client.get_chat_history(channel.name, limit=50):
+                if any([msg.text, msg.photo, msg.video, msg.document, msg.web_page]):
                     try:
-                        await bot_client.download_media(msg, file_name=os.devnull)
+                        await bot_client.get_messages(channel.name, msg.id)
                         viewed += 1
                     except Exception as e:
-                        print(f"[View] Ошибка загрузки медиа: {e}")
-                await asyncio.sleep(random.uniform(0.5, 2.0))
-                if viewed >= count:
-                    break
+                        print(f"[View] Ошибка симуляции просмотра: {e}")
+
+                    await asyncio.sleep(random.uniform(0.8, 2.0))
+                    if viewed >= count:
+                        break
 
             print(f"[View] Просмотрено: {viewed}/{count}")
 
         except Exception as e:
             print(f"[View] Ошибка получения истории: {e}")
+
+    async def execute_reaction(self, channel_id: int, count: int, bot_client: Client):
+        channel = await self.get_channel(channel_id)
+        if not channel:
+            print(f"[Reaction] Channel {channel_id} not found")
+            return
+
+        try:
+            # Присоединяемся к каналу
+            try:
+                await bot_client.join_chat(channel.name)
+                await asyncio.sleep(3)
+            except Exception as join_error:
+                print(f"[Reaction] Join error: {join_error}")
+                return
+
+            # Получаем актуальные настройки реакций
+            allowed_reactions = await self._get_allowed_reactions(bot_client, channel.name)
+            if not allowed_reactions:
+                print("[Reaction] No allowed reactions in this channel")
+                return
+
+            # Собираем сообщения с возможностью реакций
+            posts = await self._collect_reactable_messages(bot_client, channel.name)
+            if not posts:
+                print("[Reaction] No suitable messages found")
+                return
+
+            # Ставим реакции
+            success_count = 0
+            for post in posts:
+                if success_count >= count:
+                    break
+                try:
+                    reaction = random.choice(allowed_reactions)
+                    await self._send_safe_reaction(bot_client, post, reaction)
+                    success_count += 1
+                    await asyncio.sleep(random.uniform(5, 15))
+                except Exception as e:
+                    print(f"[Reaction] Error: {type(e).__name__}")
+
+            print(f"[Reaction] Success: {success_count}/{count} reactions")
+
+        except Exception as main_error:
+            print(f"[Reaction] Critical error: {main_error}")
+
+    @staticmethod
+    async def _get_allowed_reactions(client: Client, chat_id: str) -> list:
+        try:
+            chat = await client.get_chat(chat_id)
+            if not chat.available_reactions:
+                return []
+
+            return [reaction.emoji for reaction in chat.available_reactions
+                    if not reaction.is_premium]
+        except Exception as e:
+            print(f"[Reaction] Can't get reactions: {e}")
+            return ["👍", "❤", "🔥", "🎉"]  # Fallback
+
+    async def _collect_reactable_messages(self, client: Client, chat_id: str) -> list:
+        posts = []
+        try:
+            async for msg in client.get_chat_history(chat_id, limit=50):
+                if self._is_message_reactable(msg):
+                    posts.append(msg)
+                if len(posts) >= 20:
+                    break
+        except Exception as e:
+            print(f"[Reaction] History error: {e}")
+        return posts
+
+    @staticmethod
+    def _is_message_reactable(msg) -> bool:
+        return (
+                not msg.service and
+                not msg.forward_from and
+                msg.date > datetime.now() - timedelta(hours=48)
+        )
+
+    @staticmethod
+    async def _send_safe_reaction(client: Client, post, reaction: str):
+        try:
+            await client.send_reaction(
+                chat_id=post.chat.id,
+                message_id=post.id,
+                emoji=reaction
+            )
+            print(f"[Reaction] {reaction} → {post.id}")
+        except errors.ReactionInvalid:
+            print(f"[Reaction] Invalid reaction: {reaction}")
+        except errors.FloodWait as e:
+            print(f"[Reaction] Flood wait: {e.value}s")
+            await asyncio.sleep(e.value)
+        except errors.MsgIdInvalid:
+            print(f"[Reaction] Invalid message ID: {post.id}")
 
     def load_sessions(self) -> list[str]:
         if not os.path.exists(self.session_folder):
