@@ -32,7 +32,7 @@ class BotActionExecutor:
             await asyncio.sleep(delay)
 
             if action.action_type == "comment":
-                await self.execute_comment(action.channel_id, action.count, bot_client)
+                await self.execute_comment(action, bot_client)
             elif action.action_type == "reaction":
                 await self.execute_reaction(action.channel_id, action.count, bot_client)
             elif action.action_type == "view":
@@ -52,10 +52,10 @@ class BotActionExecutor:
             await bot_client.join_chat(channel_username_or_id)
             await asyncio.sleep(3)
 
-    async def execute_comment(self, channel_id: int, count: int, bot_client: Client):
-        channel = await self.get_channel(channel_id)
+    async def execute_comment(self, action: Actions, bot_client: Client):
+        channel = await self.get_channel(action.channel_id)
         if not channel:
-            print(f"[Comment] Канал с ID {channel_id} не найден.")
+            print(f"[Comment] Канал с ID {action.channel_id} не найден.")
             return
 
         try:
@@ -91,21 +91,37 @@ class BotActionExecutor:
                 print("[Comment] Нет подходящих постов.")
                 return
 
-            per_post = max(1, count // len(posts))
             total_sent = 0
+            types = [
+                ("positive_count", "positive"),
+                ("negative_count", "negative"),
+                ("critical_count", "critical"),
+                ("question_count", "question"),
+            ]
 
-            for post in posts:
-                for _ in range(per_post):
-                    comment = await self.openai_service.generate_comment()
-                    await bot_client.send_message(
-                        discussion.id,
-                        comment,
-                        reply_to_message_id=post.id
-                    )
-                    total_sent += 1
-                    await asyncio.sleep(random.randint(10, 25))
+            for attr, tone in types:
+                count = getattr(action, attr, 0) or 0
+                if count <= 0:
+                    continue
 
-            print(f"[Comment] Всего отправлено комментариев: {total_sent}/{count}")
+                per_post = max(1, count // len(posts))
+                for post in posts:
+                    for _ in range(per_post):
+                        prompt = action.custom_prompt if action.custom_prompt else None
+                        comment = await self.openai_service.generate_comment(
+                            tone=tone,
+                            prompt=prompt,
+                            context=post.text or post.caption
+                        )
+                        await bot_client.send_message(
+                            discussion.id,
+                            comment,
+                            reply_to_message_id=post.id
+                        )
+                        total_sent += 1
+                        await asyncio.sleep(random.randint(10, 25))
+
+            print(f"[Comment] Всего отправлено комментариев: {total_sent}")
 
         except Exception as e:
             print(f"[Comment] Ошибка: {type(e).__name__}: {e}")
@@ -144,7 +160,6 @@ class BotActionExecutor:
             return
 
         try:
-            # Присоединяемся к каналу
             try:
                 await bot_client.join_chat(channel.name)
                 await asyncio.sleep(3)
@@ -152,19 +167,16 @@ class BotActionExecutor:
                 print(f"[Reaction] Join error: {join_error}")
                 return
 
-            # Получаем актуальные настройки реакций
             allowed_reactions = await self._get_allowed_reactions(bot_client, channel.name)
             if not allowed_reactions:
                 print("[Reaction] No allowed reactions in this channel")
                 return
 
-            # Собираем сообщения с возможностью реакций
             posts = await self._collect_reactable_messages(bot_client, channel.name)
             if not posts:
                 print("[Reaction] No suitable messages found")
                 return
 
-            # Ставим реакции
             success_count = 0
             for post in posts:
                 if success_count >= count:
@@ -189,11 +201,10 @@ class BotActionExecutor:
             if not chat.available_reactions:
                 return []
 
-            return [reaction.emoji for reaction in chat.available_reactions
-                    if not reaction.is_premium]
+            return [reaction.emoji for reaction in chat.available_reactions if not reaction.is_premium]
         except Exception as e:
             print(f"[Reaction] Can't get reactions: {e}")
-            return ["👍", "❤", "🔥", "🎉"]  # Fallback
+            return ["👍", "❤", "🔥", "🎉"]
 
     async def _collect_reactable_messages(self, client: Client, chat_id: str) -> list:
         posts = []
@@ -210,9 +221,9 @@ class BotActionExecutor:
     @staticmethod
     def _is_message_reactable(msg) -> bool:
         return (
-                not msg.service and
-                not msg.forward_from and
-                msg.date > datetime.now() - timedelta(hours=48)
+            not msg.service and
+            not msg.forward_from and
+            msg.date > datetime.now() - timedelta(hours=48)
         )
 
     @staticmethod

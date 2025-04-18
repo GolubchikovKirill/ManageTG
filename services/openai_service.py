@@ -21,12 +21,18 @@ class OpenAIService:
             print(f"[OpenAI] Ошибка генерации имени: {e}")
             return "Ошибка генерации имени"
 
-    async def generate_comment(self, prompt: str = None) -> str:
-        if not prompt:
-            prompt = (
-                "Напиши короткий, реалистичный комментарий, который мог бы оставить обычный пользователь "
-                "в Telegram-канале под постом."
-            )
+    async def generate_comment(self, tone: str = "neutral", custom_prompt: str = None) -> str:
+        if custom_prompt:
+            prompt = custom_prompt
+        else:
+            tone_prompts = {
+                "positive": "Напиши короткий положительный комментарий для Telegram-поста, выражающий одобрение или поддержку.",
+                "neutral": "Напиши короткий нейтральный комментарий, без явной эмоциональной окраски, подходящий под Telegram-пост.",
+                "question": "Напиши короткий вопросительный комментарий, который мог бы быть задан в ответ на Telegram-пост.",
+                "critical": "Напиши короткий критический комментарий, но без агрессии, адекватный для Telegram-поста.",
+            }
+            prompt = tone_prompts.get(tone, tone_prompts["neutral"])
+
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -38,20 +44,3 @@ class OpenAIService:
         except Exception as e:
             print(f"[OpenAI] Ошибка генерации комментария: {e}")
             return "Ошибка генерации комментария"
-
-    async def generate_avatar(self) -> str:
-        prompt = (
-            "Сгенерируй портрет обычного человека (нейтральный фон, свет, прямой взгляд), "
-            "без текста, логотипов или лишних элементов. Используется для профиля Telegram."
-        )
-        try:
-            response = await self.client.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                n=1,
-                size="1024x1024",
-            )
-            return response.data[0].url
-        except Exception as e:
-            print(f"[OpenAI] Ошибка генерации аватара: {e}")
-            return ""

@@ -1,41 +1,47 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.database import get_db
-from database.models import Actions
+from database.models import Actions, ActionType
 
 router = APIRouter(
     prefix="/actions",
     tags=["Actions"]
 )
 
+# Pydantic-схемы
 class ActionCreate(BaseModel):
     channel_id: int
-    action_type: str
-    count: int
-    action_time: int
-    random_percentage: int
+    action_type: ActionType
+    positive_count: int = Field(ge=0)
+    negative_count: int = Field(ge=0)
+    critical_count: int = Field(ge=0)
+    question_count: int = Field(ge=0)
+    custom_prompt: str | None = None
+    action_time: int = Field(gt=0, le=3600)
+    random_percentage: int = Field(ge=0, le=100)
 
-class ActionResponse(BaseModel):
+
+class ActionResponse(ActionCreate):
     id: int
-    channel_id: int
-    action_type: str
-    count: int
-    action_time: int
-    random_percentage: int
 
     class Config:
         from_attributes = True
 
 
+# Роуты
 @router.post("/", response_model=ActionResponse)
 async def create_action(action: ActionCreate, db: AsyncSession = Depends(get_db)):
     try:
         new_action = Actions(
             channel_id=action.channel_id,
             action_type=action.action_type,
-            count=action.count,
+            positive_count=action.positive_count,
+            negative_count=action.negative_count,
+            critical_count=action.critical_count,
+            question_count=action.question_count,
+            custom_prompt=action.custom_prompt,
             action_time=action.action_time,
             random_percentage=action.random_percentage
         )
@@ -85,7 +91,11 @@ async def update_action(action_id: int, action: ActionCreate, db: AsyncSession =
 
         existing_action.channel_id = action.channel_id
         existing_action.action_type = action.action_type
-        existing_action.count = action.count
+        existing_action.positive_count = action.positive_count
+        existing_action.negative_count = action.negative_count
+        existing_action.critical_count = action.critical_count
+        existing_action.question_count = action.question_count
+        existing_action.custom_prompt = action.custom_prompt
         existing_action.action_time = action.action_time
         existing_action.random_percentage = action.random_percentage
 
