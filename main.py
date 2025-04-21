@@ -1,4 +1,4 @@
-# import asyncio
+import asyncio
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,5 +22,5 @@ async def startup():
     await create_tables()
 
 if __name__ == "__main__":
-    # asyncio.run(startup())
+    asyncio.run(startup())
     uvicorn.run(app, host="0.0.0.0", port=8080)
