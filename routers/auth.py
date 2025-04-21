@@ -1,17 +1,18 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Dict
+from typing import Dict
 
 from database.database import get_db
 from database.models import Accounts, Proxy
 from services.telegram_auth import TelegramAuth
+from schema_pydantic.schema_auth import SendCodeRequest, SignInRequest
 
 router = APIRouter(
     prefix="/auth",
     tags=["Auth"]
 )
+
 
 # In-memory менеджер для хранения авторизаций (в проде — Redis или БД, в идеале)
 class AuthManager:
@@ -31,22 +32,6 @@ class AuthManager:
     @classmethod
     def remove(cls, phone_number: str):
         cls._store.pop(phone_number, None)
-
-
-class SendCodeRequest(BaseModel):
-    phone_number: str
-    api_id: int
-    api_hash: str
-    proxy_id: int
-
-
-class SignInRequest(BaseModel):
-    phone_number: str
-    api_id: int
-    api_hash: str
-    proxy_id: int
-    code: str
-    password: Optional[str] = None
 
 
 def prepare_proxy_config(proxy: Proxy) -> dict | None:

@@ -7,17 +7,18 @@ from database.models import Actions
 from services.commenting_logic import BotActionExecutor
 
 router = APIRouter(
-    prefix="/commenting",
-    tags=["Commenting"],
+    prefix="/launching_actions",
+    tags=["launching_actions"],
 )
+
 
 # Роут для выполнения действия бота
 @router.post("/execute-action")
 async def execute_bot_action(
-    action_id: int,
-    api_id: str,
-    api_hash: str,
-    db: AsyncSession = Depends(get_db)
+        action_id: int,
+        api_id: str,
+        api_hash: str,
+        db: AsyncSession = Depends(get_db)
 ):
     """
     Запуск действия для всех сессий (комментарий, реакция, просмотр).

@@ -1,36 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.database import get_db
-from database.models import Actions, ActionType
+from database.models import Actions
+from schema_pydantic.schema_actions import ActionCreate, ActionResponse
 
 router = APIRouter(
     prefix="/actions",
     tags=["Actions"]
 )
 
-# Pydantic-схемы
-class ActionCreate(BaseModel):
-    channel_id: int  # ID канала, для которого выполняется действие
-    action_type: ActionType  # Тип действия (например, комментирование, реакция и т. д.)
-    positive_count: int = Field(ge=0)  # Количество положительных комментариев
-    negative_count: int = Field(ge=0)  # Количество негативных комментариев
-    critical_count: int = Field(ge=0)  # Количество критических комментариев
-    question_count: int = Field(ge=0)  # Количество вопросительных комментариев
-    custom_prompt: str | None = None  # Пользовательский промпт для действия
-    action_time: int = Field(gt=0, le=3600)  # Время действия в секундах (от 1 до 3600)
-    random_percentage: int = Field(ge=0, le=100)  # Процент случайной вариации времени действия
 
-
-class ActionResponse(ActionCreate):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-
-# Роуты
 @router.post("/", response_model=ActionResponse)
 async def create_action(action: ActionCreate, db: AsyncSession = Depends(get_db)):
     try:

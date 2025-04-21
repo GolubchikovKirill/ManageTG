@@ -1,22 +1,15 @@
 import socket
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.models import Proxy
 from database.database import get_db
+from schema_pydantic.schema_proxy import AddProxyRequest
 
 router = APIRouter(
     prefix="/proxy",
     tags=["Proxy"]
 )
-
-
-class AddProxyRequest(BaseModel):
-    ip_address: str
-    login: str
-    password: str
-    port: int
 
 
 def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
@@ -25,6 +18,7 @@ def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
             return True
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
+
 
 @router.post("/add")
 async def add_proxy(data: AddProxyRequest, db: AsyncSession = Depends(get_db)):

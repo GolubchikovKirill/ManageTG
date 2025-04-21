@@ -9,32 +9,14 @@ import pytz
 
 from database.models import Channels
 from database.database import get_db
+from schema_pydantic.schema_channels import ChannelCreate, ChannelResponse
 
 router = APIRouter(
     prefix="/channels",
     tags=["channels"],
 )
 
-# Схема для добавления канала
-class ChannelCreate(BaseModel):
-    name: str
-    comment: str
-    status: Optional[str] = "open"  # Канал может быть "open" или "private"
 
-# Схема для ответа
-class ChannelResponse(BaseModel):
-    id: int
-    name: str
-    comment: str
-    status: str
-    request_count: int
-    accepted_request_count: int
-
-    class Config:
-        from_attributes = True
-
-
-# Роут для добавления нового канала
 @router.post("/create", response_model=ChannelResponse)
 async def create_channel(channel: ChannelCreate, db: AsyncSession = Depends(get_db)):
     try:
@@ -57,7 +39,6 @@ async def create_channel(channel: ChannelCreate, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-# Роут для получения списка всех каналов
 @router.get("/get", response_model=List[ChannelResponse])
 async def get_channels(db: AsyncSession = Depends(get_db)):
     try:
