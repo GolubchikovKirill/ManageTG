@@ -9,7 +9,7 @@ from typing import Optional
 
 
 class AccountBase(BaseModel):
-    status: bool
+    is_authorized: bool
     name: str
     last_name: str
     phone_number: str
@@ -23,7 +23,7 @@ class AccountCreate(AccountBase):
 
 
 class AccountUpdate(BaseModel):
-    status: Optional[bool] = None
+    is_authorized: Optional[bool] = None
     name: Optional[str] = None
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
