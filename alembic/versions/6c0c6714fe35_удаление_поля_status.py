@@ -1,8 +1,8 @@
-"""initial
+"""Удаление поля status
 
-Revision ID: 00a846b01e6d
-Revises: 
-Create Date: 2025-04-14 19:35:06.165804
+Revision ID: 6c0c6714fe35
+Revises: a552e15b6b69
+Create Date: 2025-04-21 07:41:33.637531
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '00a846b01e6d'
-down_revision: Union[str, None] = None
+revision: str = '6c0c6714fe35'
+down_revision: Union[str, None] = 'a552e15b6b69'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    container_name: manage_tg_app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./sessions:/app/sessions
+    depends_on:
+      - db
+    environment:
+      - DB_URL=postgresql+asyncpg://postgres:24101968h@db:5432/accounts.db
+
+
+  db:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 24101968h
+      POSTGRES_DB: accounts.db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

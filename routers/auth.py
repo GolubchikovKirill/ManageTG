@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from pyrogram import errors
+from typing import Optional, Dict
 
 from database.database import get_db
 from database.models import Accounts, Proxy
@@ -12,6 +12,25 @@ router = APIRouter(
     prefix="/auth",
     tags=["Auth"]
 )
+
+# In-memory менеджер для хранения авторизаций (в проде — Redis или БД, в идеале)
+class AuthManager:
+    _store: Dict[str, Dict] = {}
+
+    @classmethod
+    def save(cls, phone_number: str, auth_obj: TelegramAuth, phone_code_hash: str):
+        cls._store[phone_number] = {
+            "auth": auth_obj,
+            "hash": phone_code_hash
+        }
+
+    @classmethod
+    def get(cls, phone_number: str):
+        return cls._store.get(phone_number)
+
+    @classmethod
+    def remove(cls, phone_number: str):
+        cls._store.pop(phone_number, None)
 
 
 class SendCodeRequest(BaseModel):
@@ -27,12 +46,10 @@ class SignInRequest(BaseModel):
     api_hash: str
     proxy_id: int
     code: str
-    phone_code_hash: str
-    password: str = None
+    password: Optional[str] = None
 
 
-def prepare_proxy_config(proxy: Proxy) -> dict:
-    """Формирует конфиг прокси для Pyrogram"""
+def prepare_proxy_config(proxy: Proxy) -> dict | None:
     if not proxy:
         return None
     return {
@@ -46,96 +63,70 @@ def prepare_proxy_config(proxy: Proxy) -> dict:
 
 @router.post("/send-code")
 async def send_code(data: SendCodeRequest, db: AsyncSession = Depends(get_db)):
-    try:
-        # Получаем прокси
-        proxy = await db.get(Proxy, data.proxy_id)
-        if not proxy:
-            raise HTTPException(status_code=404, detail="Proxy not found")
+    proxy = await db.get(Proxy, data.proxy_id)
+    if not proxy:
+        raise HTTPException(status_code=404, detail="Proxy not found")
 
-        # Инициализация клиента
-        tg = TelegramAuth(
-            phone_number=data.phone_number,
-            api_id=data.api_id,
-            api_hash=data.api_hash,
-            proxy=prepare_proxy_config(proxy)
-        )
+    tg = TelegramAuth(
+        phone_number=data.phone_number,
+        api_id=data.api_id,
+        api_hash=data.api_hash,
+        proxy=prepare_proxy_config(proxy)
+    )
 
-        # Отправка кода
-        result = await tg.send_code()
+    result = await tg.send_code()
 
-        if result["status"] != "ok":
-            raise HTTPException(
-                status_code=400,
-                detail=result.get("message", "Failed to send code")
-            )
+    if result["status"] != "ok":
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed to send code"))
 
-        return result
+    AuthManager.save(data.phone_number, tg, result["phone_code_hash"])
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error sending code: {str(e)}"
-        )
+    return {"status": "ok", "message": "Code sent"}
 
 
 @router.post("/sign-in")
 async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
-    try:
-        proxy = await db.get(Proxy, data.proxy_id)
-        proxy_config = prepare_proxy_config(proxy)
+    session_data = AuthManager.get(data.phone_number)
+    if not session_data:
+        raise HTTPException(400, "No auth session found. You must call /send-code first.")
 
-        tg = TelegramAuth(
+    tg: TelegramAuth = session_data["auth"]
+
+    # Используем phone_code_hash, уже сохранённый в session_data
+    result = await tg.sign_in(
+        code=data.code,
+        password=data.password,
+    )
+
+    if result["status"] != "ok":
+        if result["status"] == "2fa_required":
+            return result
+        raise HTTPException(400, result.get("message", "Authentication failed"))
+
+    # Удаляем сессию из памяти
+    AuthManager.remove(data.phone_number)
+
+    # Обновление/добавление аккаунта
+    account = await db.scalar(select(Accounts).where(Accounts.phone_number == data.phone_number))
+    if account:
+        account.api_id = data.api_id
+        account.api_hash = data.api_hash
+        account.proxy_id = data.proxy_id
+        account.is_authorized = True
+    else:
+        account = Accounts(
             phone_number=data.phone_number,
             api_id=data.api_id,
             api_hash=data.api_hash,
-            proxy=proxy_config
+            proxy_id=data.proxy_id,
+            is_authorized=True
         )
+        db.add(account)
 
-        result = await tg.sign_in(
-            code=data.code,
-            phone_code_hash=data.phone_code_hash,
-            password=data.password
-        )
-
-        if result["status"] != "ok":
-            error_msg = result.get("message", "Authentication failed")
-            if "2FA" in error_msg:
-                return {"status": "2fa_required", "message": error_msg}
-            raise HTTPException(status_code=400, detail=error_msg)
-
-        account = await db.scalar(
-            select(Accounts).where(Accounts.phone_number == data.phone_number)
-        )
-
-        if not account:
-            account = Accounts(
-                phone_number=data.phone_number,
-                api_id=data.api_id,
-                api_hash=data.api_hash,
-                proxy_id=data.proxy_id,
-                is_authorized=True
-            )
-            db.add(account)
-        else:
-            account.api_id = data.api_id
-            account.api_hash = data.api_hash
-            account.proxy_id = data.proxy_id
-            account.is_authorized = True
-
+    try:
         await db.commit()
-        return {"status": "ok", "message": "Successfully signed in"}
-
-    except errors.SessionPasswordNeeded:
-        return {"status": "2fa_required", "message": "2FA password required"}
-    except errors.PhoneCodeInvalid:
-        raise HTTPException(400, "Invalid code")
-    except errors.PhoneCodeExpired:
-        raise HTTPException(400, "Code expired")
-    except errors.PasswordHashInvalid:
-        raise HTTPException(400, "Invalid 2FA password")
-    except errors.PhoneNumberFlood:
-        raise HTTPException(429, "Too many attempts, try later")
-
     except Exception as e:
         await db.rollback()
-        raise HTTPException(500, f"Authentication error: {str(e)}")
+        raise HTTPException(500, f"Database error: {e}")
+
+    return {"status": "ok", "message": "Successfully signed in"}

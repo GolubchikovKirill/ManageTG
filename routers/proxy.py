@@ -30,7 +30,7 @@ def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
 async def add_proxy(data: AddProxyRequest, db: AsyncSession = Depends(get_db)):
     try:
         # Проверяем, существует ли уже прокси с таким логином
-        existing_proxy = await db.execute(select(Proxy).where(Proxy.ip_address == data.ip_address))
+        existing_proxy = await db.execute(select(Proxy).where(Proxy.port == data.port))
         existing_proxy = existing_proxy.scalars().first()
 
         if existing_proxy:
