@@ -1,4 +1,10 @@
 from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
+import os
+
+# Загружаем .env с абсолютным путём
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path)
 
 class Settings(BaseSettings):
     DB_URL: str
@@ -13,6 +19,5 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-
 
 settings = Settings()

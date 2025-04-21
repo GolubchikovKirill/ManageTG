@@ -67,18 +67,21 @@ class TelegramAuth:
                 return {"status": "error", "message": "No phone_code_hash. Send code first."}
 
             try:
+                # Пробуем войти
                 user = await self.client.sign_in(
-                    phone_number=self.phone_number,
-                    phone_code_hash=self.phone_code_hash,
-                    phone_code=code
+                    self.phone_number,
+                    self.phone_code_hash,
+                    code
                 )
             except errors.SessionPasswordNeeded:
                 if not password:
                     return {"status": "2fa_required", "message": "2FA password required"}
+
                 try:
                     await self.client.check_password(password)
                 except errors.PasswordHashInvalid:
                     return {"status": "error", "message": "Invalid 2FA password"}
+
                 user = await self.client.get_me()
 
             if isinstance(user, types.User) and user.is_bot:

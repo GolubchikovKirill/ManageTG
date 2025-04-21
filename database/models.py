@@ -29,9 +29,9 @@ class Accounts(Base):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
-    status: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    name: Mapped[str] = mapped_column(nullable=False, index=True)
-    last_name: Mapped[str] = mapped_column(nullable=False, index=True)
+    is_authorized: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False, index=True, default="Unknown")
+    last_name: Mapped[str] = mapped_column(nullable=False, index=True, default="Unknown")
     phone_number: Mapped[str] = mapped_column(nullable=False, index=True)
     api_id: Mapped[int] = mapped_column(nullable=False)
     api_hash: Mapped[str] = mapped_column(nullable=False)
