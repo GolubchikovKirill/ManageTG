@@ -1,10 +1,13 @@
-import socket
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from database.models import Proxy
+
 from database.database import get_db
 from schema_pydantic.schema_proxy import AddProxyRequest
+from repositories.proxy_repo import (
+    add_or_update_proxy_repo,
+    delete_proxy_by_ip_repo,
+    list_all_proxies_repo,
+)
 
 router = APIRouter(
     prefix="/proxy",
@@ -12,37 +15,10 @@ router = APIRouter(
 )
 
 
-def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:
-    try:
-        with socket.create_connection((ip, port), timeout=timeout):
-            return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
-        return False
-
-
 @router.post("/add")
 async def add_proxy(data: AddProxyRequest, db: AsyncSession = Depends(get_db)):
     try:
-        # Проверяем, существует ли уже прокси с таким логином
-        existing_proxy = await db.execute(select(Proxy).where(Proxy.port == data.port))
-        existing_proxy = existing_proxy.scalars().first()
-
-        if existing_proxy:
-            # Если прокси существует, обновляем его данные
-            existing_proxy.ip_address = data.ip_address
-            existing_proxy.password = data.password
-            existing_proxy.port = data.port
-        else:
-            # Если прокси не существует, создаем новую запись
-            new_proxy = Proxy(
-                ip_address=data.ip_address,
-                login=data.login,
-                password=data.password,
-                port=data.port
-            )
-            db.add(new_proxy)
-
-        await db.commit()
+        await add_or_update_proxy_repo(db, data)
         return {"message": "Proxy added or updated successfully"}
     except Exception as e:
         await db.rollback()
@@ -51,20 +27,15 @@ async def add_proxy(data: AddProxyRequest, db: AsyncSession = Depends(get_db)):
 
 @router.delete("/delete")
 async def delete_proxy(ip_address: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Proxy).where(Proxy.ip_address == ip_address))
-    proxy = result.scalar_one_or_none()
-    if not proxy:
+    success = await delete_proxy_by_ip_repo(db, ip_address)
+    if not success:
         raise HTTPException(status_code=404, detail="Proxy not found")
-
-    await db.delete(proxy)
-    await db.commit()
     return {"status": "deleted", "ip": ip_address}
 
 
 @router.get("/list")
 async def list_proxies(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Proxy))
-    proxies = result.scalars().all()
+    proxies = await list_all_proxies_repo(db)
     return [
         {
             "id": proxy.id,

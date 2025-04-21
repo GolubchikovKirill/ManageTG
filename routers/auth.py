@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict
 
 from database.database import get_db
-from database.models import Accounts, Proxy
+from database.models import Proxy
 from services.telegram_auth import TelegramAuth
 from schema_pydantic.schema_auth import SendCodeRequest, SignInRequest
+from repositories.auth_repo import get_proxy_by_id, save_account
 
 router = APIRouter(
     prefix="/auth",
@@ -48,7 +48,7 @@ def prepare_proxy_config(proxy: Proxy) -> dict | None:
 
 @router.post("/send-code")
 async def send_code(data: SendCodeRequest, db: AsyncSession = Depends(get_db)):
-    proxy = await db.get(Proxy, data.proxy_id)
+    proxy = await get_proxy_by_id(db, data.proxy_id)
     if not proxy:
         raise HTTPException(status_code=404, detail="Proxy not found")
 
@@ -60,12 +60,10 @@ async def send_code(data: SendCodeRequest, db: AsyncSession = Depends(get_db)):
     )
 
     result = await tg.send_code()
-
     if result["status"] != "ok":
         raise HTTPException(status_code=400, detail=result.get("message", "Failed to send code"))
 
     AuthManager.save(data.phone_number, tg, result["phone_code_hash"])
-
     return {"status": "ok", "message": "Code sent"}
 
 
@@ -77,38 +75,22 @@ async def sign_in(data: SignInRequest, db: AsyncSession = Depends(get_db)):
 
     tg: TelegramAuth = session_data["auth"]
 
-    # Используем phone_code_hash, уже сохранённый в session_data
-    result = await tg.sign_in(
-        code=data.code,
-        password=data.password,
-    )
-
+    result = await tg.sign_in(code=data.code, password=data.password)
     if result["status"] != "ok":
         if result["status"] == "2fa_required":
             return result
         raise HTTPException(400, result.get("message", "Authentication failed"))
 
-    # Удаляем сессию из памяти
     AuthManager.remove(data.phone_number)
 
-    # Обновление/добавление аккаунта
-    account = await db.scalar(select(Accounts).where(Accounts.phone_number == data.phone_number))
-    if account:
-        account.api_id = data.api_id
-        account.api_hash = data.api_hash
-        account.proxy_id = data.proxy_id
-        account.is_authorized = True
-    else:
-        account = Accounts(
+    try:
+        await save_account(
+            db=db,
             phone_number=data.phone_number,
             api_id=data.api_id,
             api_hash=data.api_hash,
-            proxy_id=data.proxy_id,
-            is_authorized=True
+            proxy_id=data.proxy_id
         )
-        db.add(account)
-
-    try:
         await db.commit()
     except Exception as e:
         await db.rollback()
