@@ -26,7 +26,7 @@ async def execute_view_action(
 
     #
     sessions_path = "sessions"
-    action_time = 10
+    action_time = 1
 
     executor = ViewService(sessions_path=sessions_path, action_time=action_time)
     await executor.add_views(post_link=action.post_link)
