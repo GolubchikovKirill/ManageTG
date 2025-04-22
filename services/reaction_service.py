@@ -3,10 +3,16 @@ import os
 import random
 from pyrogram import Client
 
-
 class ReactionService:
-    def __init__(self, sessions_path: str = "sessions"):
+    def __init__(self, sessions_path: str = "sessions", action_time: int = 1, random_percentage: int = 20):
         self.session_folder = sessions_path
+        self.action_time = action_time
+        self.random_percentage = random_percentage
+
+    @staticmethod
+    def random_time_with_spread(base_minutes: int, spread_percent: int) -> int:
+        spread = base_minutes * spread_percent / 100
+        return random.randint(int((base_minutes - spread) * 60), int((base_minutes + spread) * 60))
 
     async def _send_reaction(self, session_name: str, chat_id: int, message_id: int, emoji: str):
         try:
@@ -42,6 +48,11 @@ class ReactionService:
         random.shuffle(session_dirs)
         session_dirs = session_dirs[:max_sessions]
 
+        # Задержка перед началом выполнения действия
+        delay = self.random_time_with_spread(self.action_time, self.random_percentage)
+        print(f"⌛ Ждём {delay // 60} мин перед выполнением действия...")
+        await asyncio.sleep(delay)
+
         for message in messages:
             chat_id = message.chat.id
             message_id = message.message_id
@@ -55,6 +66,16 @@ class ReactionService:
                 tasks.append(self._send_reaction(session_name, chat_id, message_id, emoji))
 
         await asyncio.gather(*tasks)
+
+        action_duration = self.action_time * 60
+        start_time = asyncio.get_event_loop().time()
+
+        # Ожидаем, пока не пройдет время выполнения действия
+        elapsed_time = asyncio.get_event_loop().time() - start_time
+        time_left = action_duration - elapsed_time
+        if time_left > 0:
+            print(f"⌛ Действие будет выполняться ещё {time_left // 60} мин...")
+            await asyncio.sleep(time_left)
 
     def load_sessions(self) -> list[str]:
         if not os.path.exists(self.session_folder):

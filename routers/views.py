@@ -3,8 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.database import get_db
 from schema_pydantic.schema_views import ViewActionCreate, ViewActionResponse
-from services import openai_service
-from services.commenting_logic import BotActionExecutor
+from services.view_service import ViewService
 from repositories.views_repo import (
     create_view_action,
     get_all_view_actions,
@@ -19,16 +18,18 @@ router = APIRouter(prefix="/views", tags=["Views"])
 @router.post("/execute-action")
 async def execute_view_action(
     action_id: int,
-    api_id: str,
-    api_hash: str,
     db: AsyncSession = Depends(get_db)
 ):
     action = await get_view_action_by_id(db, action_id)
     if not action:
         raise HTTPException(status_code=404, detail="View action not found")
 
-    executor = BotActionExecutor(session=db, openai_service=openai_service)
-    await executor.run(action=action, api_id=api_id, api_hash=api_hash)
+    #
+    sessions_path = "sessions"
+    action_time = 10
+
+    executor = ViewService(sessions_path=sessions_path, action_time=action_time)
+    await executor.add_views(post_link=action.post_link)
 
     return {"message": "View action executed successfully"}
 

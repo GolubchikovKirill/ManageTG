@@ -125,16 +125,26 @@ class BotActionExecutor:
             async def session_task(name=session_name):
                 try:
                     async with Client(
-                        name=name,
-                        api_id=api_id,
-                        api_hash=api_hash,
-                        workdir=self.session_folder
+                            name=name,
+                            api_id=api_id,
+                            api_hash=api_hash,
+                            workdir=self.session_folder
                     ) as client:
+                        # Задержка перед началом выполнения действия (ожидание перед стартом)
                         delay = self.random_time_with_spread(action.action_time, action.random_percentage)
                         print(f"⌛ Ждём {delay // 60} мин перед выполнением действия...")
                         await asyncio.sleep(delay)
 
+                        action_duration = action.action_time * 60
+                        start_time = asyncio.get_event_loop().time()
+
                         await self.execute_comment(action, client)
+
+                        elapsed_time = asyncio.get_event_loop().time() - start_time
+                        time_left = action_duration - elapsed_time
+                        if time_left > 0:
+                            print(f"⌛ Действие будет выполняться ещё {time_left // 60} мин...")
+                            await asyncio.sleep(time_left)  # Ожидаем остаток времени
                 except Exception as e:
                     print(f"[Runner] Ошибка в сессии {name}: {e}")
 

@@ -82,7 +82,7 @@ class CommentActions(BaseAction):
 
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
     positive_count: Mapped[int] = mapped_column(default=0, nullable=False)
-    negative_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    neutral_count: Mapped[int] = mapped_column(default=0, nullable=False)
     critical_count: Mapped[int] = mapped_column(default=0, nullable=False)
     question_count: Mapped[int] = mapped_column(default=0, nullable=False)
     custom_prompt: Mapped[str] = mapped_column(Text, nullable=True)
@@ -105,5 +105,6 @@ class ViewActions(BaseAction):
 
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
     count: Mapped[int] = mapped_column(default=10, nullable=False)
+    post_link: Mapped[str] = mapped_column(Text, nullable=True)
 
     channel: Mapped["Channels"] = relationship("Channels", back_populates="view_actions")
