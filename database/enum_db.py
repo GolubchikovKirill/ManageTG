@@ -14,6 +14,6 @@ class ActionType(str, enum.Enum):
 
 class ToneType(str, enum.Enum):
     positive = "positive"
-    negative = "negative"
+    neutral = "neutral"
     critical = "critical"
     question = "question"

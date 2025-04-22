@@ -2,10 +2,26 @@ from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.database import Base
 from datetime import datetime, timezone
-from database.enum_db import ChannelStatus, ActionType
+from database.enum_db import ChannelStatus
 
 
-# Таблица аккаунтов
+class BaseAction(Base):
+    __abstract__ = True
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    action_time: Mapped[int] = mapped_column(default=60, nullable=False)
+    random_percentage: Mapped[int] = mapped_column(default=20, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False
+    )
+
 class Accounts(Base):
     __tablename__ = "accounts"
 
@@ -21,7 +37,6 @@ class Accounts(Base):
     proxy: Mapped["Proxy"] = relationship("Proxy", backref="accounts")
 
 
-# Таблица прокси
 class Proxy(Base):
     __tablename__ = "proxy"
 
@@ -33,7 +48,6 @@ class Proxy(Base):
     port: Mapped[int] = mapped_column(default=1080, nullable=False)
 
 
-# Таблица каналов
 class Channels(Base):
     __tablename__ = "channels"
 
@@ -48,7 +62,9 @@ class Channels(Base):
     request_count: Mapped[int] = mapped_column(default=0, nullable=False)
     accepted_request_count: Mapped[int] = mapped_column(default=0, nullable=False)
 
-    actions: Mapped[list["Actions"]] = relationship("Actions", back_populates="channel")
+    comment_actions: Mapped[list["CommentActions"]] = relationship("CommentActions", back_populates="channel")
+    reaction_actions: Mapped[list["ReactionActions"]] = relationship("ReactionActions", back_populates="channel")
+    view_actions: Mapped[list["ViewActions"]] = relationship("ViewActions", back_populates="channel")
 
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
@@ -61,29 +77,33 @@ class Channels(Base):
     )
 
 
-# Таблица действий
-class Actions(Base):
-    __tablename__ = "actions"
+class CommentActions(BaseAction):
+    __tablename__ = "comment_actions"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
-
-    action_type: Mapped[ActionType] = mapped_column(Enum(ActionType), nullable=False)
-
-    # Для комментариев
     positive_count: Mapped[int] = mapped_column(default=0, nullable=False)
     negative_count: Mapped[int] = mapped_column(default=0, nullable=False)
     critical_count: Mapped[int] = mapped_column(default=0, nullable=False)
     question_count: Mapped[int] = mapped_column(default=0, nullable=False)
     custom_prompt: Mapped[str] = mapped_column(Text, nullable=True)
 
-    action_time: Mapped[int] = mapped_column(default=60, nullable=False)
-    random_percentage: Mapped[int] = mapped_column(default=20, nullable=False)
+    channel: Mapped["Channels"] = relationship("Channels", back_populates="comment_actions")
 
-    channel: Mapped["Channels"] = relationship("Channels", back_populates="actions")
 
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-                                                 nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-                                                 onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-                                                 nullable=False)
+class ReactionActions(BaseAction):
+    __tablename__ = "reaction_actions"
+
+    channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
+    emoji: Mapped[str] = mapped_column(default="❤️", nullable=False)
+    count: Mapped[int] = mapped_column(default=10, nullable=False)
+
+    channel: Mapped["Channels"] = relationship("Channels", back_populates="reaction_actions")
+
+
+class ViewActions(BaseAction):
+    __tablename__ = "view_actions"
+
+    channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False, index=True)
+    count: Mapped[int] = mapped_column(default=10, nullable=False)
+
+    channel: Mapped["Channels"] = relationship("Channels", back_populates="view_actions")

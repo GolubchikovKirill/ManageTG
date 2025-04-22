@@ -7,15 +7,16 @@ DB_URL = settings.DB_URL
 
 engine = create_async_engine(DB_URL, echo=True)
 
+
 class Base(DeclarativeBase):
     pass
+
 
 async_session = async_sessionmaker(
     bind=engine,
     expire_on_commit=False,
     class_=AsyncSession
 )
-
 
 
 # Используем как Depends(get_db)
