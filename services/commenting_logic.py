@@ -4,7 +4,8 @@ import random
 from pyrogram import Client, errors
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import Actions, Channels
+
+from database.models import CommentActions, Channels
 from services.openai_service import OpenAIService
 
 
@@ -32,7 +33,7 @@ class BotActionExecutor:
             await bot_client.join_chat(channel_username_or_id)
             await asyncio.sleep(3)
 
-    async def execute_comment(self, action: Actions, bot_client: Client):
+    async def execute_comment(self, action: CommentActions, bot_client: Client):
         channel = await self.get_channel(action.channel_id)
         if not channel:
             print(f"[Comment] Канал с ID {action.channel_id} не найден.")
@@ -74,7 +75,7 @@ class BotActionExecutor:
             total_sent = 0
             types = [
                 ("positive_count", "positive"),
-                ("negative_count", "negative"),
+                ("neutral_count", "neutral"),
                 ("critical_count", "critical"),
                 ("question_count", "question"),
             ]
@@ -116,7 +117,7 @@ class BotActionExecutor:
             if f.endswith(".session")
         ]
 
-    async def run(self, action: Actions, api_id: str, api_hash: str):
+    async def run(self, action: CommentActions, api_id: str, api_hash: str):
         sessions = self.load_sessions()
         tasks = []
 
@@ -133,8 +134,7 @@ class BotActionExecutor:
                         print(f"⌛ Ждём {delay // 60} мин перед выполнением действия...")
                         await asyncio.sleep(delay)
 
-                        if action.action_type == "comment":
-                            await self.execute_comment(action, client)
+                        await self.execute_comment(action, client)
                 except Exception as e:
                     print(f"[Runner] Ошибка в сессии {name}: {e}")
 
