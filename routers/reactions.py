@@ -1,4 +1,3 @@
-# routers/reactions.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,8 +27,8 @@ async def execute_reaction_action(
 
     service = ReactionService(sessions_path=SESSIONS_PATH)
     await service.react_to_last_posts(
-        channel_id=action.channel_id,  # используем channel_id из действия
-        emoji=action.reaction_type,
+        channel_id=action.channel_id,
+        emoji=action.emoji,
         max_sessions=action.count
     )
     return {"message": "Reaction action executed successfully"}
