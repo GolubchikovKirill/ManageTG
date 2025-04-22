@@ -10,8 +10,7 @@ services:
     depends_on:
       - db
     environment:
-      - DB_URL=postgresql+asyncpg://postgres:24101968h@db:5432/accounts.db
-
+      - DB_URL=${DB_URL}
 
   db:
     image: postgres:16
@@ -19,7 +18,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 24101968h
-      POSTGRES_DB: accounts.db
+      POSTGRES_DB: accounts_manage
     ports:
       - "5432:5432"
     volumes:
