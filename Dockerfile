@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     build-essential \
     libffi-dev \
+    postgresql-client \
     && apt-get clean
 
 WORKDIR /app
