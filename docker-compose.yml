@@ -18,7 +18,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 24101968h
-      POSTGRES_DB: accounts_manage
+      POSTGRES_DB: accounts_db
     ports:
       - "5432:5432"
     volumes:

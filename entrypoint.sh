@@ -1,17 +1,13 @@
 #!/bin/bash
 
-
 echo "Waiting for PostgreSQL to start..."
 until pg_isready -h db -U postgres; do
   sleep 2
 done
 
-
 echo "Creating DB in Docker container..."
-psql -h db -U postgres -c "CREATE DATABASE IF NOT EXISTS accounts_manage" -w
-
-echo "Generating migration..."
-alembic revision --autogenerate -m "Create tables"
+PGPASSWORD=$POSTGRES_PASSWORD psql -h db -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'accounts_db'" | grep -q 1 || \
+  PGPASSWORD=$POSTGRES_PASSWORD psql -h db -U postgres -c "CREATE DATABASE accounts_db;"
 
 echo "Running migrations..."
 alembic upgrade head
