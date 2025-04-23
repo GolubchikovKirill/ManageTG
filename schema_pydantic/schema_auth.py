@@ -11,8 +11,8 @@ class SendCodeRequest(BaseModel):
 
 class SignInRequest(BaseModel):
     phone_number: str
+    code: str
+    password: Optional[str] = None
     api_id: int
     api_hash: str
     proxy_id: int
-    code: str
-    password: Optional[str] = None
