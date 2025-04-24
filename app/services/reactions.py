@@ -22,14 +22,12 @@ class ReactionService:
             print(f"[ReactionService] Ошибка реакции ({session_name}): {e}")
 
     async def get_post_comments(self, channel_id: str, post_count: int = 3):
-        # Получаем последние сообщения
         async with Client("bot", workdir=self.session_folder) as app:
             messages = await app.get_chat_history(channel_id, limit=post_count)
 
-        # Извлекаем комментарии для каждого поста
         comments = []
         for message in messages:
-            if message.replies:  # Проверка на наличие комментариев
+            if message.replies:
                 async for reply in app.get_chat_replies(channel_id, message_id=message.message_id):
                     comments.append(reply.text)
 
@@ -41,7 +39,6 @@ class ReactionService:
         async with Client("bot", workdir=self.session_folder) as app:
             messages = await app.get_chat_history(channel_id, limit=post_count)
 
-        # Выбираем только последние post_count сообщений
         tasks = []
         session_dirs = [f for f in os.listdir(self.session_folder) if
                         os.path.isdir(os.path.join(self.session_folder, f))]
@@ -57,11 +54,9 @@ class ReactionService:
             chat_id = message.chat.id
             message_id = message.message_id
 
-            # Получаем комментарии к посту
             comments = await self.get_post_comments(channel_id, post_count=post_count)
             print(f"Комментарии к посту {message_id}: {comments}")
 
-            # Отправляем реакции
             for session_name in session_dirs:
                 tasks.append(self._send_reaction(session_name, chat_id, message_id, emoji))
 
@@ -70,7 +65,6 @@ class ReactionService:
         action_duration = self.action_time * 60
         start_time = asyncio.get_event_loop().time()
 
-        # Ожидаем, пока не пройдет время выполнения действия
         elapsed_time = asyncio.get_event_loop().time() - start_time
         time_left = action_duration - elapsed_time
         if time_left > 0:

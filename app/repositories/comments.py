@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import CommentActions
-from schema_pydantic.schema_comment import CommentActionCreate
+from app.database.models import CommentActions
+from app.schemas.comments import CommentActionCreate
 
 
 async def create_comment_action(db: AsyncSession, action_data: CommentActionCreate) -> CommentActions:

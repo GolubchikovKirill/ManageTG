@@ -5,17 +5,16 @@ auth_clients: Dict[str, TelegramAuth] = {}
 
 
 async def get_auth(
-    phone_number: str,
-    api_id: int,
-    api_hash: str,
-    proxy: Optional[dict] = None
+        phone_number: str,
+        api_id: int,
+        api_hash: str,
+        proxy: Optional[dict] = None
 ) -> TelegramAuth:
     if phone_number not in auth_clients:
         auth_clients[phone_number] = TelegramAuth(phone_number, api_id, api_hash, proxy)
 
     auth = auth_clients[phone_number]
 
-    # Подключаемся, если клиент ещё не в сети
     await auth.connect()
     return auth
 

@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from database.models import ReactionActions
-from schema_pydantic.schema_reaction import ReactionActionCreate
+from app.database.models import ReactionActions
+from app.schemas.reaction import ReactionActionCreate
 
 
 async def create_reaction_action(db: AsyncSession, action_data: ReactionActionCreate) -> ReactionActions:

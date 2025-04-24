@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from database.models import Proxy, Accounts
+from app.database.models import Proxy, Accounts
 
 
 async def get_proxy_by_id(db: AsyncSession, proxy_id: int) -> Proxy | None:

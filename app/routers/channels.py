@@ -3,9 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 
-from database.database import get_db
-from schema_pydantic.schema_channels import ChannelCreate, ChannelResponse
-from repositories.channels_repo import (
+from app.database.database import get_db
+from app.schemas.channels import ChannelCreate, ChannelResponse
+from app.repositories.channels import (
     create_channel_repo,
     get_all_channels_repo,
     delete_channel_repo

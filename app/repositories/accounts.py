@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import Optional, List
 
-from database.models import Accounts
-from schema_pydantic.schema_accounts import AccountCreate, AccountUpdate
+from app.database.models import Accounts
+from app.schemas.accounts import AccountCreate, AccountUpdate
 
 
 async def create_account_repo(db: AsyncSession, account_data: AccountCreate) -> Accounts:

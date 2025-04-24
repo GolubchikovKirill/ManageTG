@@ -5,8 +5,8 @@ from pyrogram import Client, errors
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import CommentActions, Channels
-from services.openai_service import OpenAIService
+from app.database.models import CommentActions, Channels
+from app.services.openai import OpenAIService
 
 
 class BotActionExecutor:

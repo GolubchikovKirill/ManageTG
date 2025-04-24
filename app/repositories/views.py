@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from database.models import ViewActions
-from schema_pydantic.schema_views import ViewActionCreate
+from app.database.models import ViewActions
+from app.schemas.views import ViewActionCreate
 
 
 async def create_view_action(db: AsyncSession, action_data: ViewActionCreate) -> ViewActions:

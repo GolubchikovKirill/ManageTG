@@ -1,8 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database.database import create_tables
-from routers import routers
+from app.database.database import create_tables
+from app.routers import routers
 
 app = FastAPI()
 

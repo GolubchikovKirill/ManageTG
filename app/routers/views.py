@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.database import get_db
-from schema_pydantic.schema_views import ViewActionCreate, ViewActionResponse
-from services.view_service import ViewService
-from repositories.views_repo import (
+from app.database.database import get_db
+from app.schemas.views import ViewActionCreate, ViewActionResponse
+from app.services.views import ViewService
+from app.repositories.views import (
     create_view_action,
     get_all_view_actions,
     get_view_action_by_id,

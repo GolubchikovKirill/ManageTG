@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI
-from settings import settings
+from app.settings import settings
 
 
 class OpenAIService:

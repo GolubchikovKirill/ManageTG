@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.database import get_db
-from schema_pydantic.schema_accounts import AccountCreate, AccountUpdate, AccountRead
-from repositories.accounts_repo import (
+from app.database.database import get_db
+from app.schemas.accounts import AccountCreate, AccountUpdate, AccountRead
+from app.repositories.accounts import (
     create_account_repo,
     get_all_accounts_repo,
     get_account_by_id_repo,

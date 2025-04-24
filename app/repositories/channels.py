@@ -4,8 +4,8 @@ from typing import List, Optional
 from datetime import datetime
 import pytz
 
-from database.models import Channels
-from schema_pydantic.schema_channels import ChannelCreate
+from app.database.models import Channels
+from app.schemas.channels import ChannelCreate
 
 async def create_channel_repo(db: AsyncSession, channel_data: ChannelCreate) -> Channels:
     created_at = datetime.now(pytz.utc).replace(tzinfo=None)

@@ -3,8 +3,8 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from database.models import Proxy
-from schema_pydantic.schema_proxy import AddProxyRequest
+from app.database.models import Proxy
+from app.schemas.proxy import AddProxyRequest
 
 
 def is_proxy_available(ip: str, port: int, timeout: int = 3) -> bool:

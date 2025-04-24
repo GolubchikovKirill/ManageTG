@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.database import get_db
-from repositories.comments_repo import (
+from app.database.database import get_db
+from app.repositories.comments import (
     create_comment_action,
     get_all_comment_actions,
     get_comment_action_by_id,
     update_comment_action,
     delete_comment_action
 )
-from schema_pydantic.schema_comment import CommentActionCreate, CommentActionResponse
-from services.commenting_logic import BotActionExecutor
-from services.openai_service import OpenAIService
+from app.schemas.comments import CommentActionCreate, CommentActionResponse
+from app.services.commenting_logic import BotActionExecutor
+from app.services.openai import OpenAIService
 
 router = APIRouter(prefix="/commenting", tags=["Commenting"])
 

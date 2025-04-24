@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.database import get_db
-from schema_pydantic.schema_proxy import AddProxyRequest
-from repositories.proxy_repo import (
+from app.database.database import get_db
+from app.schemas.proxy import AddProxyRequest
+from app.repositories.proxy import (
     add_or_update_proxy_repo,
     delete_proxy_by_ip_repo,
     list_all_proxies_repo,

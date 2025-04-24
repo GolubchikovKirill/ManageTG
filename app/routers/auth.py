@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict
 
-from database.database import get_db
-from database.models import Proxy
-from services.telegram_auth import TelegramAuth
-from schema_pydantic.schema_auth import SendCodeRequest, SignInRequest
-from repositories.auth_repo import get_proxy_by_id, save_account
+from app.database.database import get_db
+from app.database.models import Proxy
+from app.services.telegram_auth import TelegramAuth
+from app.schemas.auth import SendCodeRequest, SignInRequest
+from app.repositories.auth import get_proxy_by_id, save_account
 
 router = APIRouter(
     prefix="/auth",

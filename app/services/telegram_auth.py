@@ -6,12 +6,12 @@ from pyrogram import Client, errors, types
 
 class TelegramAuth:
     def __init__(
-        self,
-        phone_number: str,
-        api_id: int,
-        api_hash: str,
-        proxy: Optional[Dict] = None,
-        session_dir: str = "sessions"
+            self,
+            phone_number: str,
+            api_id: int,
+            api_hash: str,
+            proxy: Optional[Dict] = None,
+            session_dir: str = "sessions"
     ):
         self.phone_number = phone_number
         self.api_id = api_id
@@ -19,8 +19,7 @@ class TelegramAuth:
         self.proxy = proxy
         self.phone_code_hash: Optional[str] = None
 
-        # Безопасное имя для файла .session
-        safe_name = re.sub(r"[^\w\d]", "_", phone_number)
+        safe_name = re.sub(r"\W", "_", phone_number)
 
         self.session_path = os.path.abspath(session_dir)
         os.makedirs(self.session_path, exist_ok=True)

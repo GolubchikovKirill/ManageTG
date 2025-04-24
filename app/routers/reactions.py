@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.database import get_db
-from schema_pydantic.schema_reaction import ReactionActionCreate, ReactionActionResponse
-from services.reaction_service import ReactionService
-from repositories.reactions_repo import (
+from app.database.database import get_db
+from app.schemas.reaction import ReactionActionCreate, ReactionActionResponse
+from app.services.reactions import ReactionService
+from app.repositories.reactions import (
     create_reaction_action,
     get_all_reaction_actions,
     get_reaction_action_by_id,
