@@ -9,7 +9,7 @@ services:
       - ./sessions:/app/sessions
     depends_on:
       - db
-    env_file: .env
+    env_file: app/.env
     environment:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}

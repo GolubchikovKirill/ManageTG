@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     API_HASH: str
 
     OPENAI_API_KEY: str
+    OPENAI_MODEL: str = "gpt-3.5-turbo-0125"
+    OPENAI_MAX_RETRIES: int = 2
+    OPENAI_TIMEOUT: int = 10
 
     DB_USER: str
     DB_PASSWORD: str
@@ -19,7 +22,7 @@ class Settings(BaseSettings):
     DB_PORT: int
 
     class Config:
-        env_file = "../.env"
+        env_file = ".env"
         env_file_encoding = "utf-8"
 
 settings = Settings()

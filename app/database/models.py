@@ -86,6 +86,7 @@ class CommentActions(BaseAction):
     critical_count: Mapped[int] = mapped_column(default=0, nullable=False)
     question_count: Mapped[int] = mapped_column(default=0, nullable=False)
     custom_prompt: Mapped[str] = mapped_column(Text, nullable=True)
+    custom_count: Mapped[int] = mapped_column(default=0, nullable=False)
 
     channel: Mapped["Channels"] = relationship("Channels", back_populates="comment_actions")
 
