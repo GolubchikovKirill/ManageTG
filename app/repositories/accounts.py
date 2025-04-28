@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import Optional, List
 
-from app.database.models import Accounts
+from app.models.models import Accounts
 from app.schemas.accounts import AccountCreate, AccountUpdate
 
 

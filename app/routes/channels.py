@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 
-from app.database.database import get_db
+from app.core.db import get_db
 from app.schemas.channels import ChannelCreate, ChannelResponse
 from app.repositories.channels import (
     create_channel_repo,

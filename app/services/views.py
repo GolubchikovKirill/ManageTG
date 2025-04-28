@@ -1,7 +1,8 @@
 from pyrogram import Client
 import asyncio
-import os
 import random
+import os
+
 
 class ViewService:
     def __init__(self, sessions_path: str, action_time: int, random_percentage: int = 20):
@@ -10,41 +11,42 @@ class ViewService:
         self.random_percentage = random_percentage
 
     @staticmethod
-    def random_time_with_spread(base_minutes: int, spread_percent: int) -> int:
-        spread = base_minutes * spread_percent / 100
-        return random.randint(int((base_minutes - spread) * 60), int((base_minutes + spread) * 60))
+    def random_time_with_spread(base_seconds: int, spread_percent: int) -> int:
+        spread = base_seconds * spread_percent / 100
+        return random.randint(int(base_seconds - spread), int(base_seconds + spread))
 
-    async def _send_view(self, session_name: str, post_link: str):
+    async def _send_view(self, session_name: str, chat: str, message_id: int):
         try:
             async with Client(session_name, workdir=self.sessions_path) as app:
-                # Выполняем действие (например, "typing") в чате
-                await app.invoke_chat_action(chat_id=post_link.split('/')[-2], action="typing")
-                # Просматриваем сообщение
-                await app.get_messages(post_link.split('/')[-2], int(post_link.split('/')[-1]))
+                await app.get_messages(chat, message_id)
+                print(f"[ViewService] ✅ Просмотр отправлен от {session_name}")
         except Exception as e:
-            print(f"[ViewService] Ошибка просмотра ({session_name}): {e}")
+            print(f"[ViewService] ⚠️ Ошибка просмотра ({session_name}): {e}")
 
-    async def add_views(self, post_link: str, max_sessions: int = 10):
+    async def add_views(self, chat: str, session_limit: int, delay_between: int = 10):
         session_dirs = [f for f in os.listdir(self.sessions_path) if os.path.isdir(os.path.join(self.sessions_path, f))]
         random.shuffle(session_dirs)
-        session_dirs = session_dirs[:max_sessions]
+        session_dirs = session_dirs[:session_limit]
+
+        print(f"[ViewService] Старт накрутки просмотров на посты канала: {chat}")
+        print(f"[ViewService] Количество выбранных аккаунтов: {len(session_dirs)}")
 
         tasks = []
-        for session_name in session_dirs:
-            tasks.append(self._send_view(session_name, post_link))
+        async with Client("bot", workdir=self.sessions_path) as app:
+            # Получаем последние 10 сообщений
+            messages = await app.get_chat_history(chat, limit=10)
 
-        delay = self.random_time_with_spread(self.action_time, self.random_percentage)
-        print(f"Ждём {delay // 60} мин перед выполнением действия...")
-        await asyncio.sleep(delay)
+        for message in messages:
+            print(f"[ViewService] Обрабатываем пост {message.message_id}")
+            for session_name in session_dirs:
+                tasks.append(asyncio.create_task(self._send_view(session_name, chat, message.message_id)))
 
+                delay = self.random_time_with_spread(delay_between, self.random_percentage)
+                print(f"[ViewService] Пауза {delay} секунд перед следующим аккаунтом...")
+                await asyncio.sleep(delay)
 
-        action_duration = self.action_time * 60
-        start_time = asyncio.get_event_loop().time()
+        await asyncio.gather(*tasks)
 
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-        elapsed_time = asyncio.get_event_loop().time() - start_time
-        time_left = action_duration - elapsed_time
-        if time_left > 0:
-            print(f"Действие будет выполняться ещё {time_left // 60} мин...")
-            await asyncio.sleep(time_left)
+        total_duration = self.action_time * 60
+        print(f"[ViewService] Завершение через {total_duration // 60} минут ожидания...")
+        await asyncio.sleep(total_duration)

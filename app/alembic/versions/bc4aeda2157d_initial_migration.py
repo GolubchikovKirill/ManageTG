@@ -1,8 +1,8 @@
-"""Create tables
+"""Initial migration
 
-Revision ID: cd1c5fdd1afe
+Revision ID: bc4aeda2157d
 Revises: 
-Create Date: 2025-04-22 16:06:37.720257
+Create Date: 2025-04-28 08:33:30.718277
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'cd1c5fdd1afe'
+revision: str = 'bc4aeda2157d'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -71,6 +71,7 @@ def upgrade() -> None:
     sa.Column('critical_count', sa.Integer(), nullable=False),
     sa.Column('question_count', sa.Integer(), nullable=False),
     sa.Column('custom_prompt', sa.Text(), nullable=True),
+    sa.Column('custom_count', sa.Integer(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('action_time', sa.Integer(), nullable=False),
     sa.Column('random_percentage', sa.Integer(), nullable=False),

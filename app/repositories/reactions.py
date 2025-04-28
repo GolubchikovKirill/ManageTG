@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database.models import ReactionActions
+from app.models.models import ReactionActions
 from app.schemas.reaction import ReactionActionCreate
 
 

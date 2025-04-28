@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database.models import Proxy
+from app.models.models import Proxy
 from app.schemas.proxy import AddProxyRequest
 
 

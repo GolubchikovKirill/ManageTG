@@ -1,8 +1,8 @@
 from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database.database import Base
+from app.core.db import Base
 from datetime import datetime, timezone
-from app.database.enum_db import ChannelStatus
+from app.models.enum_db import ChannelStatus
 
 
 class BaseAction(Base):
@@ -86,6 +86,7 @@ class CommentActions(BaseAction):
     critical_count: Mapped[int] = mapped_column(default=0, nullable=False)
     question_count: Mapped[int] = mapped_column(default=0, nullable=False)
     custom_prompt: Mapped[str] = mapped_column(Text, nullable=True)
+    custom_count: Mapped[int] = mapped_column(default=0, nullable=False)
 
     channel: Mapped["Channels"] = relationship("Channels", back_populates="comment_actions")
 
