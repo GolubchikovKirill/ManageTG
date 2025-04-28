@@ -1,4 +1,5 @@
 from pyrogram import Client
+from pyrogram.raw.functions.messages import GetMessagesViews
 import asyncio
 import random
 import os
@@ -18,7 +19,16 @@ class ViewService:
     async def _send_view(self, session_name: str, chat: str, message_id: int):
         try:
             async with Client(session_name, workdir=self.sessions_path) as app:
-                await app.get_messages(chat, message_id)
+                peer = await app.resolve_peer(chat)  # Получаем RAW-представление чата
+
+                await app.invoke(
+                    GetMessagesViews(
+                        peer=peer,
+                        id=[message_id],  # список сообщений
+                        increment=True    # Увеличиваем просмотры
+                    )
+                )
+
                 print(f"[ViewService] ✅ Просмотр отправлен от {session_name}")
         except Exception as e:
             print(f"[ViewService] ⚠️ Ошибка просмотра ({session_name}): {e}")
@@ -33,7 +43,6 @@ class ViewService:
 
         tasks = []
         async with Client("bot", workdir=self.sessions_path) as app:
-            # Получаем последние 10 сообщений
             messages = await app.get_chat_history(chat, limit=10)
 
         for message in messages:

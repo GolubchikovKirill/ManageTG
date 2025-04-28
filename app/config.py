@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         url = f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         return str(PostgresDsn(url))
 
+
     model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(__file__), "../.env"))
 
 settings = Settings()

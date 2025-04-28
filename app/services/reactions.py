@@ -2,9 +2,10 @@ import asyncio
 import os
 import random
 from pyrogram import Client
+from app.config import settings
 
 class ReactionService:
-    def __init__(self, sessions_path: str = "sessions", action_time: int = 1, random_percentage: int = 20):
+    def __init__(self, sessions_path: str = settings.SESSIONS_DIR, action_time: int = 1, random_percentage: int = 20):
         self.session_folder = sessions_path
         self.action_time = action_time
         self.random_percentage = random_percentage

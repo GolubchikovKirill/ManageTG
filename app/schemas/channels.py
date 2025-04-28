@@ -7,6 +7,10 @@ class ChannelCreate(BaseModel):
     comment: str
     status: Optional[str] = "open"
 
+    def correct_name(self):
+        self.name = self.name.lower()
+        return self
+
 
 class ChannelResponse(BaseModel):
     id: int

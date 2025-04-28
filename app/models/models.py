@@ -2,8 +2,12 @@ from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 from datetime import datetime, timezone
-from app.models.enum_db import ChannelStatus
+import enum
 
+
+class ChannelStatus(str, enum.Enum):
+    open = "open"
+    private = "private"
 
 class BaseAction(Base):
     __abstract__ = True

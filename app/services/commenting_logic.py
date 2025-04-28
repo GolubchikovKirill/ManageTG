@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.models import CommentActions, Channels
 from app.services.openai import OpenAIService
-
+from app.config import settings
 
 class BotActionExecutor:
-    def __init__(self, session: AsyncSession, openai_service: OpenAIService, session_folder: str = "sessions"):
+    def __init__(self, session: AsyncSession, openai_service: OpenAIService, session_folder: str = settings.SESSIONS_DIR):
         self.session = session
         self.openai_service = openai_service
         self.session_folder = session_folder

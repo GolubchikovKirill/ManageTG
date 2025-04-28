@@ -2,6 +2,7 @@ import os
 import re
 from typing import Optional, Dict
 from pyrogram import Client, errors, types
+from app.config import settings
 
 
 class TelegramAuth:
@@ -11,7 +12,7 @@ class TelegramAuth:
             api_id: int,
             api_hash: str,
             proxy: Optional[Dict] = None,
-            session_dir: str = "sessions"
+            session_dir: str = settings.SESSIONS_DIR,
     ):
         self.phone_number = phone_number
         self.api_id = api_id
@@ -54,9 +55,6 @@ class TelegramAuth:
             return {"status": "error", "message": f"Flood wait: {e.value} seconds"}
         except Exception as e:
             return {"status": "error", "message": f"Send code error: {str(e)}"}
-        # УБИРАЕМ отключение — клиент должен остаться активным!
-        # finally:
-        #     await self.disconnect()
 
     async def sign_in(self, code: str, password: Optional[str] = None) -> Dict:
         try:
