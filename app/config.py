@@ -7,6 +7,7 @@ class Settings(BaseSettings):
 
     API_ID: int
     API_HASH: str
+    SESSIONS_DIR: str = "sessions"
 
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
