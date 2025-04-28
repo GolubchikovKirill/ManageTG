@@ -1,30 +1,26 @@
-from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import PostgresDsn, computed_field
 import os
 
-# Загружаем .env с абсолютным путём
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path)
-
 class Settings(BaseSettings):
+    OPENAI_API_KEY: str
+
     API_ID: int
     API_HASH: str
 
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-3.5-turbo-0125"
-    OPENAI_MAX_RETRIES: int = 2
-    OPENAI_TIMEOUT: int = 10
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: str
+    POSTGRES_DB: str
 
-    DB_USER: str
-    DB_PASSWORD: str
-    DB_NAME: str
-    DB_HOST: str
-    DB_PORT: int
+    @computed_field
+    @property
+    def db_url(self) -> PostgresDsn:
+        url = f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return str(PostgresDsn(url))
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(__file__), "../.env"))
 
 settings = Settings()
-
-DB_URL = f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+print(settings.db_url)

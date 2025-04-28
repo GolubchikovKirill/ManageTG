@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.database import get_db
+from app.core.db import get_db
 from app.schemas.views import ViewActionCreate, ViewActionResponse
 from app.services.views import ViewService
 from app.repositories.views import (

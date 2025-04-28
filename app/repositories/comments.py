@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import CommentActions
+from app.models.models import CommentActions
 from app.schemas.comments import CommentActionCreate
 
 

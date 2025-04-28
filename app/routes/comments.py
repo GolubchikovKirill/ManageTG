@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
-from app.database.database import get_db
+from app.core.db import get_db
 from app.repositories.comments import (
     create_comment_action,
     get_all_comment_actions,

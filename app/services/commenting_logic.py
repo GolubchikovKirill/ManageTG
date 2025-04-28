@@ -4,7 +4,7 @@ import random
 from pyrogram import Client, errors
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database.models import CommentActions, Channels
+from app.models.models import CommentActions, Channels
 from app.services.openai import OpenAIService
 
 

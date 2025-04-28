@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database.models import ViewActions
+from app.models.models import ViewActions
 from app.schemas.views import ViewActionCreate
 
 

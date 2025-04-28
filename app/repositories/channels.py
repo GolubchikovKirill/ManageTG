@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 import pytz
 
-from app.database.models import Channels
+from app.models.models import Channels
 from app.schemas.channels import ChannelCreate
 
 async def create_channel_repo(db: AsyncSession, channel_data: ChannelCreate) -> Channels:

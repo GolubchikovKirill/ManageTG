@@ -1,8 +1,8 @@
 from sqlalchemy import Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database.database import Base
+from app.core.db import Base
 from datetime import datetime, timezone
-from app.database.enum_db import ChannelStatus
+from app.models.enum_db import ChannelStatus
 
 
 class BaseAction(Base):
